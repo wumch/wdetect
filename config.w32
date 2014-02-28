@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("wdetect", "for wdetect support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("wdetect", "enable wdetect support", "no");
+
+if (PHP_WDETECT != "no") {
+	EXTENSION("wdetect", "wdetect.c");
+}
+
