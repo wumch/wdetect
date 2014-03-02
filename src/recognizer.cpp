@@ -15,7 +15,7 @@ void Recognizer::detect_vline(Sophist& sop) const
     {
         if (is_vline(sop, col))
         {
-            if (prev_line == -1 || col - prev_line >= Config::instance()->vline_min_gap)
+            if (prev_line == -1 || col - prev_line >= sop.opts.vline_min_gap)
             {
                 if (sop.vline == Sophist::unknown_num)
                 {
@@ -45,13 +45,13 @@ bool Recognizer::is_vline(const Sophist& sop, int32_t col) const
         if (!sop.is_fg(col, row))
         {
             // 被相邻列连接 也可以(遵设置)
-            if (Config::instance()->vline_adj)
+            if (sop.opts.vline_adj)
             {
                 if (CS_BLIKELY(!is_fg(sop, col - 1, row)))
                 {
                     if (!is_fg(sop, col + 1, row))
                     {
-                        if (++gap > Config::instance()->vline_max_break)
+                        if (++gap > sop.opts.vline_max_break)
                         {
                             return false;
                         }
@@ -65,13 +65,12 @@ bool Recognizer::is_vline(const Sophist& sop, int32_t col) const
 
 void Recognizer::detect_hline(Sophist& sop) const
 {
-    WDT_IM_SHOW(sop.img);
     int32_t row = 0, prev_line = -1;
     while (row < sop.rows)
     {
         if (is_hline(sop, row))
         {
-            if (prev_line == -1 || row - prev_line >= Config::instance()->hline_min_gap)
+            if (prev_line == -1 || row - prev_line >= sop.opts.hline_min_gap)
             {
                 if (sop.hline == Sophist::unknown_num)
                 {
@@ -101,13 +100,13 @@ bool Recognizer::is_hline(const Sophist& sop, int32_t row) const
         if (!sop.is_fg(col, row))
         {
             // 被相邻行连接 也可以(遵设置)
-            if (Config::instance()->hline_adj)
+            if (sop.opts.hline_adj)
             {
                 if (CS_BLIKELY(!is_fg(sop, col, row - 1)))
                 {
                     if (!is_fg(sop, col, row + 1))
                     {
-                        if (++gap > Config::instance()->hline_max_break)
+                        if (++gap > sop.opts.hline_max_break)
                         {
                             return false;
                         }
@@ -142,7 +141,7 @@ void Recognizer::detect_circle(Sophist& sop) const
         {
             if (is_fg(sop, point))
             {
-                if (continuous >= Config::instance()->circle_min_diameter_v)
+                if (continuous >= sop.opts.circle_min_diameter_v)
                 {
                     if (sop.circle == Sophist::unknown_num)
                     {
@@ -256,8 +255,9 @@ bool Recognizer::contain_island(const Sophist& sop) const
     return false;
 }
 
-digit_t Recognizer::recognize(Sophist sop) const
+digit_t Recognizer::recognize(Sophist& sop) const
 {
+    WDT_IM_SHOW(sop.img);
     if (is_dot(sop))
     {
         return Config::digit_dot;
@@ -338,7 +338,7 @@ digit_t Recognizer::recognize(Sophist sop) const
 
 bool Recognizer::is_comma(const Sophist& sop) const
 {
-    if (sop.rows == Config::instance()->comma_height && sop.cols == Config::instance()->comma_width)
+    if (sop.rows == sop.opts.comma_height && sop.cols == sop.opts.comma_width)
     {
         int32_t area = 0;
         for (int32_t row = 0; row < sop.rows; ++row)
@@ -348,14 +348,14 @@ bool Recognizer::is_comma(const Sophist& sop) const
                 area += sop.is_fg(col, row);
             }
         }
-        return area >= Config::instance()->comma_min_area;
+        return area >= sop.opts.comma_min_area;
     }
     return false;
 }
 
 bool Recognizer::is_dot(const Sophist& sop) const
 {
-    if (sop.rows == Config::instance()->dot_height && sop.cols == Config::instance()->dot_width)
+    if (sop.rows == sop.opts.dot_height && sop.cols == sop.opts.dot_width)
     {
         int32_t area = 0;
         for (int32_t row = 0; row < sop.rows; ++row)
@@ -365,7 +365,7 @@ bool Recognizer::is_dot(const Sophist& sop) const
                 area += sop.is_fg(col, row);
             }
         }
-        return area >= Config::instance()->dot_min_area;
+        return area >= sop.opts.dot_min_area;
     }
     return false;
 }

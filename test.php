@@ -14,8 +14,6 @@ else if (!class_exists($className))
 
 class Detecter
 {
-    protected $detecter;
-
     protected $prepareOptions = array(
         'img_file_min_size' => 24,
         'img_file_max_size' => 8388608, // 8MB
@@ -41,21 +39,33 @@ class Detecter
 
     public function __construct()
     {
-        $this->detecter = new WDetecter;
     }
 
-    public function detect($imgfile)
+    public function detect($imgFile)
     {
-        $prepareRes = $this->detecter->prepare($this->prepareOptions);
-        var_dump($prepareRes);
-        if ($prepareRes)
+        $detecter = new WDetecter;
+        $prepareOpts = (array)(new PrepareOpts);
+        $prepareOpts['img_file'] = $imgFile;
+        print_r($prepareOpts);
+        $prepareRes = $detecter->prepare($prepareOpts);
+        print_r($prepareRes);
+        echo str_repeat('-', 40), PHP_EOL;
+        if ($prepareRes[0] === WDetecter::OK)
         {
-            $locateRes = $this->detecter->locate($this->locateOptions);
-            var_dump($locateRes);
-            if ($locateRes)
+            $locateOpts = (array)(new ChartOpts);
+            print_r($locateOpts);
+            $locateRes = $detecter->locate($locateOpts);
+            print_r($locateRes);
+            echo str_repeat('-', 40), PHP_EOL;
+            if ($locateRes[0] === WDetecter::OK)
             {
-                $detectRes = $this->detecter->detect($this->detectOptions);
-                var_dump($detectRes);
+                $songdaROC = new SongdaROC;
+                $songdaROC->adjust($locateRes[2][0], $locateRes[2][1], 2);
+                $detectOpts = (array)($songdaROC);
+                print_r($detectOpts);
+                $detectRes = $detecter->detect($detectOpts);
+                print_r($detectRes);
+                echo str_repeat('-', 40), PHP_EOL;
                 if ($detectRes)
                 {
                     echo 'done', PHP_EOL;
@@ -86,11 +96,14 @@ class PrepareOpts extends Options
 }
 
 class LocateOpts extends Options
-{}
+{
+    public $type;
+}
 
 class ChartOpts extends LocateOpts
 {
-    public $chart_min_width = 120;
+    public $type = WDetecter::CMD_LOCATE_CHART;
+    public $chart_min_width = 130;
     public $chart_max_width = 170;
     public $chart_min_height = 32;
     public $chart_max_height = 132;
@@ -107,12 +120,20 @@ class DetectOpts extends Options
 class DIBOpts extends DetectOpts
 {
     public $left, $top, $right, $bottom;
+
+    public function reset($left, $right, $top, $bottom, $x0 = 0, $y0 = 0)
+    {
+        $this->left = $left + $x0;
+        $this->right = $right + $x0;
+        $this->top = $top + $y0;
+        $this->bottom = $bottom + $y0;
+    }
 }
 
 class NumOpts extends DIBOpts
 {
-    public $digit_height;
-    public $circle_min_diameter_v;
+    public $digit_height = 9;
+    public $circle_min_diameter_v = 2;
     public $vline_adj = 0, $hline_adj = 0;
     public $vline_max_break = 0, $hline_max_break = 0;
     public $vline_min_gap = 2, $hline_min_gap = 2;
@@ -120,22 +141,38 @@ class NumOpts extends DIBOpts
 
 class IntegerOpts extends NumOpts
 {
+    public $type = WDetecter::CMD_DETECT_INTEGER;
     public $comma_width = 3, $comma_height = 4,
            $comma_min_area = 6, $comma_protrude = 2;
 }
 
 class PercentOpts extends NumOpts
 {
+    public $type = WDetecter::CMD_DETECT_PERCENT;
     public $percent_width = 11;
     public $dot_width = 2, $dot_height = 2,
            $dot_min_area = 4;
 }
 
-print_r((array)(new NumOpts));
+class SongdaROC extends IntegerOpts
+{
+    public function adjust($x0, $y0, $padding = 0)
+    {
+        $this->right = $x0 + 335;
+        $this->left = $this->right - 60;
+        $this->top = $y0 + 3;
+        $this->bottom = $this->top + $this->digit_height;
+
+        $this->left -= $padding;
+        $this->top -= $padding;
+        $this->right += $padding;
+        $this->bottom += $this->comma_protrude + $padding;
+    }
+}
 
 if ($argc)
 {
-    $imgFile = count($argv) > 1 ? $argv[1] : "/data/fsuggest/wdetect.forgive/data/1.jpg";
+    $imgFile = count($argv) > 1 ? $argv[1] : "/data/fsuggest/wdetect.forgiven/data/1.jpg";
     $detecter = new Detecter;
     $detecter->check();
     $detecter->detect($imgFile);

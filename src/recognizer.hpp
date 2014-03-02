@@ -19,6 +19,7 @@ public:
     };
 
     const cv::Mat& img;
+    const NumOpts& opts;
     const int32_t cols, rows;
 
     int8_t hline, vline;
@@ -28,8 +29,8 @@ public:
     Pos circle_pos;
 
 public:
-    Sophist(const cv::Mat& bimg)
-        : img(bimg), cols(img.size().width), rows(img.size().height),
+    Sophist(const cv::Mat& bimg, const NumOpts& opts_)
+        : img(bimg), opts(opts_), cols(img.size().width), rows(img.size().height),
           hline(unknown_num), vline(unknown_num),
           circle(unknown_num), top_circle(unknown_num), bottom_circle(unknown_num),
           hline_pos(unknown), circle_pos(unknown)
@@ -102,11 +103,17 @@ private:
 public:
     Recognizer();
 
-    digit_t recognize(Sophist sop) const;
+    digit_t recognize(const cv::Mat& img, const NumOpts& opts) const
+    {
+        Sophist sop(img, opts);
+        return recognize(sop);
+    }
 
     virtual ~Recognizer();
 
 protected:
+    digit_t recognize(Sophist& sop) const;
+
     void detect_hline(Sophist& sop) const;
     void detect_vline(Sophist& sop) const;
     void detect_circle(Sophist& sop) const;

@@ -23,28 +23,16 @@
 #include "facade.hpp"
 #include "detecter.hpp"
 
-static zend_class_entry* wdetect_class_entry;
+zend_class_entry* wdetect_class_entry;
 
-/* {{{ wdetect_functions[]
- *
- * Every user visible function must have an entry in wdetect_functions[].
- */
-//const zend_function_entry wdetect_functions[] = {
-//	PHP_FE(wdetect,	NULL)		/* For testing, remove later. */
-//	PHP_FE_END	/* Must be the last line in wdetect_functions[] */
-//};
-/* }}} */
-
-/* {{{ wdetect_module_entry
- */
 zend_module_entry wdetect_module_entry = {
 #if ZEND_MODULE_API_NO >= 20010901
 	STANDARD_MODULE_HEADER,
 #endif
 	"wdetect",
-//	wdetect_functions,
+	NULL,
 	PHP_MINIT(wdetect),
-	PHP_MSHUTDOWN(wdetect),
+	NULL,
 	NULL,
 	NULL,
 	PHP_MINFO(wdetect),
@@ -53,7 +41,6 @@ zend_module_entry wdetect_module_entry = {
 #endif
 	STANDARD_MODULE_PROPERTIES
 };
-/* }}} */
 
 #ifdef COMPILE_DL_WDETECT
 BEGIN_EXTERN_C()
@@ -61,24 +48,13 @@ ZEND_GET_MODULE(wdetect)
 END_EXTERN_C()
 #endif
 
-/*
-PHP_INI_MH(onUpdateHasGui)
-{
-    return SUCCESS;
-}
-PHP_INI_BEGIN()
-    PHP_INI_ENTRY("wdetect.has_gui", "0", PHP_INI_ALL, onUpdateHasGui)
-PHP_INI_END()
-// */
-
-zend_object_handlers* detecter_object_handlers;
-
 function_entry wdetecter_methods[] = {
-    ZEND_ME(WDetecter, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
-    ZEND_ME(WDetecter, __destruct,  NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
-    ZEND_ME(WDetecter, prepare,     NULL, ZEND_ACC_PUBLIC)
-    ZEND_ME(WDetecter, locate,        NULL, ZEND_ACC_PUBLIC)
-    ZEND_ME(WDetecter, detect,      NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
+    PHP_ME(WDetecter, __destruct,  NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
+    PHP_ME(WDetecter, prepare,     NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, setOrigin,   NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, locate,      NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, detect,      NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
 };
 
@@ -87,15 +63,14 @@ function_entry wdetecter_methods[] = {
 
 PHP_MINIT_FUNCTION(wdetect)
 {
-//	REGISTER_INI_ENTRIES();
-
 	{
         zend_class_entry class_entry;
         INIT_CLASS_ENTRY(class_entry, "WDetecter", wdetecter_methods);
         wdetect_class_entry = zend_register_internal_class(&class_entry TSRMLS_CC);
+
         wdetect_class_entry->create_object = create_detecter;
         memcpy(&detecter_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-        detecter_object_handlers->clone_obj = NULL;
+        detecter_object_handlers.clone_obj = NULL;
 	}
 
 	_WDT_CLASS_CONST_LONG("CMD_LOCATE_CHART", wdt::locate_chart);
@@ -122,24 +97,11 @@ PHP_MINIT_FUNCTION(wdetect)
 
 #undef _WDT_CLASS_CONST_LONG
 
-
-/* {{{ PHP_MSHUTDOWN_FUNCTION
- */
-PHP_MSHUTDOWN_FUNCTION(wdetect)
-{
-	UNREGISTER_INI_ENTRIES();
-	return SUCCESS;
-}
-/* }}} */
-
-/* {{{ PHP_MINFO_FUNCTION
- */
 PHP_MINFO_FUNCTION(wdetect)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "wdetect support", "enabled");
 	php_info_print_table_end();
-	DISPLAY_INI_ENTRIES();
 }
 /* }}} */
 
@@ -158,6 +120,7 @@ PHP_METHOD(WDetecter, prepare)
     zval* options;
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE)
     {
+        php_error_docref(NULL TSRMLS_CC, E_ERROR, "<Wdetecter>.setOrigin requires one arguments to be array.");
         RETURN_FALSE;
     }
 
@@ -176,7 +139,7 @@ PHP_METHOD(WDetecter, locate)
     zval* options;
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE)
     {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "doing locate() without passing any options.");
+        RETURN_FALSE;
     }
 
     wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(
@@ -189,12 +152,31 @@ PHP_METHOD(WDetecter, locate)
     Proxy::locate(detecter, options, return_value);
 }
 
+PHP_METHOD(WDetecter, setOrigin)
+{
+    wdt::isize_t left, top;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &left, &top) == FAILURE)
+    {
+        RETURN_FALSE;
+    }
+
+    wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(
+        zend_object_store_get_object(getThis() TSRMLS_CC))->dectecter;
+    if (detecter == NULL)
+    {
+        RETURN_FALSE;
+    }
+
+    Proxy::set_origin(detecter, left, top);
+    RETURN_TRUE;
+}
+
 PHP_METHOD(WDetecter, detect)
 {
     zval* options;
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE)
     {
-        php_error_docref(NULL TSRMLS_CC, E_WARNING, "doing locate() without passing any options.");
+        RETURN_FALSE;
     }
 
     wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(

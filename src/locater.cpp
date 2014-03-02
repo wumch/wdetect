@@ -1,8 +1,7 @@
 
-#include "chartdetecter.hpp"
+#include "locater.hpp"
 #include <cmath>
 #include <vector>
-#include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -12,32 +11,51 @@
 
 namespace wdt {
 
-void ChartDetecter::detect()
+void Locater::locate()
 {
-    CS_DUMP(bounds.size());
+    BoundList bounds;
+    {
+        cv::Mat shadow;
+        img.copyTo(shadow);
+
+        ContourList contours;
+        cv::findContours(shadow, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+
+        for (ContourList::const_iterator it = contours.begin(); it != contours.end(); ++it)
+        {
+            checkin(bounds, cv::boundingRect(*it));
+        }
+
+        if (CS_BUNLIKELY(bounds.empty()))
+        {
+            res.code = fo_no_match;
+            return;
+        }
+    }
+
     for (BoundList::const_iterator it = bounds.begin(); it != bounds.end(); ++it)
     {
         if (valid(*it))
         {
             if (detect(*it))
             {
-                res.chart_code = success;
-                break;
+                return;
             }
         }
     }
+    res.code = fo_no_match;
 }
 
-bool ChartDetecter::detect(const Bound& chart_bound)
+bool Locater::detect(const Bound& chart_bound)
 {
+    typedef std::vector<isize_t> RopeList;
+    typedef std::vector<RopeList> EchelonList;
+
     const cv::Mat chart = img(chart_bound);
     isize_t first_echelon_y = -1;
     bool prev_valid = false;
-    typedef std::vector<isize_t> IsizeList;
-    typedef IsizeList RopeList;
-    typedef std::vector<RopeList> EchelonList;
     EchelonList echelons;
-    echelons.reserve(Config::instance()->echelons);
+    echelons.reserve(opts.echelons);
     EchelonList::reverse_iterator echelon;
 
     isize_t rope, prev_rope;
@@ -100,7 +118,7 @@ bool ChartDetecter::detect(const Bound& chart_bound)
         }
     }
 
-    const isize_t eche_min_height = Config::instance()->chart_min_height - 2;
+    const isize_t eche_min_height = opts.chart_min_height - 2;
     for (EchelonList::iterator it = echelons.begin(); it != echelons.end(); )
     {
         if (it->size() < eche_min_height)
@@ -127,14 +145,13 @@ bool ChartDetecter::detect(const Bound& chart_bound)
         CS_STDOUT << std::endl;
     }
 #endif
-    if (echelons.empty() || echelons.size() > Config::instance()->echelons)
+    if (echelons.empty() || echelons.size() > opts.echelons)
     {
         return false;
     }
-    tl.x = chart_bound.x;
-    tl.y = first_echelon_y + chart_bound.y;
+    res.left = chart_bound.x;
+    res.top = first_echelon_y + chart_bound.y;
 
-    res.chart_rates.reserve(echelons.size());
     int32_t turn = 0;
     for (EchelonList::const_iterator eche_it = echelons.begin(); eche_it != echelons.end(); ++eche_it)
     {
@@ -161,42 +178,30 @@ bool ChartDetecter::detect(const Bound& chart_bound)
         CS_DUMP(cal_x(line, eche_it->size()));
         CS_DUMP(cal_x(line, eche_it->size() + 1));
 
-        switch (++turn)
-        {
-        case 1:
-            res.tuwen_rate_fc.reset(cal_rate(line, eche_it->size()));
-            CS_DUMP(res.tuwen_rate_fc);
-            break;
-        case 2:
-            res.yuanwen_rate_fc.reset(cal_rate(line, eche_it->size()));
-            CS_DUMP(res.yuanwen_rate_fc);
-            break;
-        case 3:
-            res.share_rate_fc.reset(cal_rate(line, eche_it->size()));
-            CS_DUMP(res.share_rate_fc);
-            break;
-        }
+        res.rates.insert(std::make_pair(turn, cal_rate(line, eche_it->size())));
+        CS_DUMP(res.rates.rbegin()->second);
+        ++turn;
     }
     return true;
 }
 
-CS_FORCE_INLINE double ChartDetecter::cal_rate(const cv::Vec4f& line, double height) const
+CS_FORCE_INLINE double Locater::cal_rate(const cv::Vec4f& line, double height) const
 {
-    return (cal_x(line, 0) - Config::instance()->echelon_padding_left)
-        / (cal_x(line, height) - Config::instance()->echelon_padding_left);
+    return (cal_x(line, 0) - opts.echelon_padding_left)
+        / (cal_x(line, height) - opts.echelon_padding_left);
 }
 
-double ChartDetecter::cal_x(double gradient_inv, double x0, double y0, double y) const
+double Locater::cal_x(double gradient_inv, double x0, double y0, double y) const
 {
     return (y - y0) * gradient_inv + x0;
 }
 
-double ChartDetecter::cal_x(const cv::Vec4f& line, double y) const
+double Locater::cal_x(const cv::Vec4f& line, double y) const
 {
     return (line[0] * (y - line[3]) / line[1]) + line[2];
 }
 
-bool ChartDetecter::length(const uchar* rope, isize_t width, int32_t& len) const
+bool Locater::length(const uchar* rope, isize_t width, int32_t& len) const
 {
     len = 0;
     bool began = false, end = false;
@@ -228,13 +233,21 @@ bool ChartDetecter::length(const uchar* rope, isize_t width, int32_t& len) const
     return began;
 }
 
-bool ChartDetecter::valid(const Bound& bound) const
+void Locater::checkin(BoundList& bounds, const Bound& bound) const
 {
-    return staging::between<isize_t>(bound.width, Config::instance()->chart_min_width, Config::instance()->chart_max_width)
-        && staging::between<isize_t>(bound.height, Config::instance()->chart_min_height, Config::instance()->chart_max_height);
+    if (valid(bound))
+    {
+        bounds.push_back(bound);
+    }
 }
 
-bool ChartDetecter::is_fg(int32_t color) const
+bool Locater::valid(const Bound& bound) const
+{
+    return staging::between<isize_t>(bound.width, opts.chart_min_width, opts.chart_max_width)
+        && staging::between<isize_t>(bound.height, opts.chart_min_height, opts.chart_max_height);
+}
+
+bool Locater::is_fg(int32_t color) const
 {
     return color == Config::black;
 }

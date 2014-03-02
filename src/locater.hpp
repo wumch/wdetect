@@ -5,38 +5,32 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include "cvdef.hpp"
+#include "facade.hpp"
 
 namespace wdt {
 
 class DetectResult;
 
-class ChartDetecter
+class Locater
 {
 private:
-    DetectResult& res;
-
     const cv::Mat& img;
-    const BoundList& bounds;
-
-    Point tl;
+    const ChartOpts& opts;
+    ChartRes& res;
 
 public:
-    ChartDetecter(const cv::Mat& img_, const BoundList& bounds_, DetectResult& res_)
-        : res(res_), img(img_), bounds(bounds_)
+    Locater(const cv::Mat& img_, const ChartOpts& opts_, ChartRes& res_)
+        : img(img_), opts(opts_), res(res_)
     {}
 
-    void detect();
-
-    CS_FORCE_INLINE const Point& chart_tl() const
-    {
-        return tl;
-    }
+    void locate();
 
 protected:
     bool detect(const Bound& chart_bound);
 
 private:
     CS_FORCE_INLINE bool valid(const Bound& bound) const;
+    CS_FORCE_INLINE void checkin(BoundList& bounds, const Bound& bound) const;
 
     CS_FORCE_INLINE bool length(const uchar* pixels, isize_t width, int32_t& len) const;
 

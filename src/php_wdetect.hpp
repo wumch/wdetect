@@ -27,8 +27,8 @@ extern "C" {
 }
 #endif
 
-extern "C" {
 #include "predef.hpp"
+extern "C" {
 #include "php5/main/php.h"
 #include "php5/main/php_ini.h"
 #include "php5/ext/standard/info.h"
@@ -53,9 +53,9 @@ END_EXTERN_C()
 #endif
 
 PHP_MINIT_FUNCTION(wdetect);
-PHP_MSHUTDOWN_FUNCTION(wdetect);
-PHP_RINIT_FUNCTION(wdetect);
-PHP_RSHUTDOWN_FUNCTION(wdetect);
+//PHP_MSHUTDOWN_FUNCTION(wdetect);
+//PHP_RINIT_FUNCTION(wdetect);
+//PHP_RSHUTDOWN_FUNCTION(wdetect);
 PHP_MINFO_FUNCTION(wdetect);
 
 /* In every utility function you add that needs to use variables 
@@ -78,6 +78,7 @@ PHP_METHOD(WDetecter, __construct);
 PHP_METHOD(WDetecter, __destruct);
 PHP_METHOD(WDetecter, prepare);
 PHP_METHOD(WDetecter, locate);
+PHP_METHOD(WDetecter, setOrigin);
 PHP_METHOD(WDetecter, detect);
 
 #endif	/* PHP_WDETECT_H */

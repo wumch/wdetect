@@ -34,15 +34,19 @@ typedef enum {
     success = 0,    // 一切正常
     failure = 1,    // 失败，原因未知
 
-    fo_img_file_nonexists = 2,
-    fo_img_file_ext     = 3,    // 图片文件扩展名不被支持
-    fo_img_file_size    = 4,    // 图片文件体积不合格
-    fo_img_type    = 5,    // 图片类型(按头信息判断)检验失败
-    fo_img_size         = 6,    // 图片尺寸不合格
+    fo_wrong_param, // 参数有误
 
-    fo_no_match   = 7,    // 没有检测到梯形
-    fo_detect      = 8,    // 文字信息检测失败(具体错误看数据)
-    fo_recognize      = 9,    // 文字信息检测失败(具体错误看数据)
+    fo_img_file_nonexists = 2,
+    fo_img_file_unreadable = 3,
+    fo_img_file_ext     = 4,    // 图片文件扩展名不被支持
+    fo_img_file_size    = 5,    // 图片文件体积不合格
+    fo_img_type    = 6,    // 图片类型(按头信息判断)检验失败
+    fo_img_content    = 7,    // 图片类型(按头信息判断)检验失败
+    fo_img_size         = 8,    // 图片尺寸不合格
+
+    fo_no_match   = 9,    // 没有检测到梯形
+    fo_detect      = 10,    // 文字信息检测失败(具体错误看数据)
+    fo_recognize      = 11,    // 文字信息检测失败(具体错误看数据)
 } ResultCode;
 
 // to resident into php array, it's better to be an ordered map.
@@ -53,6 +57,10 @@ class Result
 {
 public:
     ResultCode code;
+
+    Result()
+        : code (success)
+    {}
 };
 
 class PrepareRes: public Result
@@ -139,21 +147,23 @@ public:
     isize_t vline_adj, hline_adj;     // 横/竖线允许的邻接宽度
     isize_t vline_max_break, hline_max_break;  // 线最大断点数
     isize_t vline_min_gap, hline_min_gap;      // 线之间最小间隔
+
+    isize_t comma_width, comma_height,
+        comma_min_area, comma_protrude;
+
+    isize_t dot_width, dot_height,
+        dot_min_area;
 };
 
 class IntegerOpts: public NumOpts
 {
 public:
-    isize_t comma_width, comma_height,
-        comma_min_area, comma_protrude;
 };
 
 class PercentOpts: public NumOpts
 {
 public:
     isize_t percent_width;
-    isize_t dot_width, dot_height,
-        dot_min_area;
 };
 
 }

@@ -5,15 +5,16 @@
 #include <string>
 #include <iostream>
 extern "C" {
-#include <TSRM/tsrm_virtual_cwd.h>
+#include <php5/TSRM/tsrm_virtual_cwd.h>
 }
 #if defined(HAVE_BOOST_FILESYSTEM) && HAVE_BOOST_FILESYSTEM
 #   include <boost/filesystem/operations.hpp>
+#else
+#   include "filesystem.hpp"
 #endif
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "math.hpp"
-#include "filesystem.hpp"
 #include "facade.hpp"
 
 namespace wdt {
@@ -40,33 +41,10 @@ void Preprocer::checkin(const Bound& bound, BoundList& bounds) const
     }
 }
 
-// TODO: strict, no hard-code
-bool Preprocer::valid(const Bound& bound) const
-{
-    static const isize_t min_height = std::min(
-        Config::instance()->digit_height,
-        std::min(Config::instance()->name_height, Config::instance()->title_height)
-    ) - Config::instance()->y_err;
-    static const isize_t max_height = std::max(
-        Config::instance()->digit_height,
-        std::max(Config::instance()->name_height, Config::instance()->title_height)
-    ) + Config::instance()->y_err;
-    return staging::between<isize_t>(bound.height, min_height, max_height)
-        || staging::between<isize_t>(bound.height,
-            Config::instance()->chart_min_height, Config::instance()->chart_max_height);
-}
-
 cv::Mat Preprocer::binarize(const char* img_file) const
 {
     cv::Mat gray_img;
-    try
-    {
-        gray_img = cv::imread(img_file, CV_LOAD_IMAGE_GRAYSCALE);
-    }
-    catch (const std::exception& e)
-    {
-        CS_ERR("error occured on cv::imread: " << e.what());
-    }
+    gray_img = cv::imread(img_file, CV_LOAD_IMAGE_GRAYSCALE);
     cv::Mat binary_img(gray_img.size(), CV_8UC1);
     if (!gray_img.empty())
     {
@@ -75,28 +53,61 @@ cv::Mat Preprocer::binarize(const char* img_file) const
     return binary_img;
 }
 
-bool Preprocer::check_file_size(const char* img_file) const
+bool Preprocer::check_file_size(const PrepareOpts& opts, PrepareRes& res) const
 {
+    CS_DUMP(opts.img_file);
 #if defined(HAVE_BOOST_FILESYSTEM) && HAVE_BOOST_FILESYSTEM
-    return boost::filesystem::exists(img_file) &&
-        staging::between<ssize_t>(
-            boost::filesystem::file_size(img_file),
-            Config::instance()->img_file_min_size,
-            Config::instance()->img_file_max_size);
+    if (boost::filesystem::exists(opts.img_file))
+    {
+        if (!boost::filesystem::is_directory(opts.img_file))
+        {
+            if (staging::between<ssize_t>(
+                boost::filesystem::file_size(opts.img_file),
+                opts.img_file_min_size, opts.img_file_max_size))
+            {
+                return true;
+            }
+            else
+            {
+                CS_DUMP(boost::filesystem::file_size(opts.img_file));
+                CS_DUMP(opts.img_file_min_size);
+                CS_DUMP(opts.img_file_max_size);
+                res.code = fo_img_file_size;
+            }
+        }
+        else
+        {
+            res.code = fo_img_file_unreadable;
+        }
+    }
+    else
+    {
+        res.code = fo_img_file_nonexists;
+    }
+    return false;
 #else
-    return staging::between<ssize_t>(
-        staging::filesize(img_file),
-        Config::instance()->img_file_min_size,
-        Config::instance()->img_file_max_size);
+    if (staging::between<ssize_t>(
+        staging::filesize(opts.img_file.c_str()),
+        opts.img_file_min_size,
+        opts.img_file_max_size))
+    {
+        return true;
+    }
+    else
+    {
+        res.code = fo_img_file_size;
+    }
+    return false;
 #endif
 }
 
 // See: http://www.cplusplus.com/forum/beginner/45217/ . thank that guy.
-bool Preprocer::check_img_size(const char* img_file) const
+bool Preprocer::check_img_size(const PrepareOpts& opts, PrepareRes& res) const
 {
-    FILE *fp = VCWD_FOPEN(img_file, "rb");
+    FILE *fp = VCWD_FOPEN(opts.img_file.c_str(), "rb");
     if (fp == NULL)
     {
+        res.code = fo_img_file_unreadable;
         return false;
     }
 
@@ -110,6 +121,7 @@ bool Preprocer::check_img_size(const char* img_file) const
     if (fread(buf, sizeof(buf[0]), header_size, fp) != header_size)
     {
         fclose(fp);
+        res.code = fo_img_content;
         return false;
     }
 
@@ -131,6 +143,7 @@ bool Preprocer::check_img_size(const char* img_file) const
             fseek(fp, pos, SEEK_SET);
             if (fread(buf + 2, sizeof(uint8_t), 12, fp) != 12)
             {
+                res.code = fo_img_content;
                 return false;
             }
         }
@@ -163,13 +176,21 @@ bool Preprocer::check_img_size(const char* img_file) const
         height = (buf[20] << 24) + (buf[21] << 16) + (buf[22] << 8) + (buf[23] << 0);
     }
 
-    return check_size(width, height);
+    if (check_size(opts, width, height))
+    {
+        return true;
+    }
+    else
+    {
+        res.code = fo_img_size;
+    }
+    return false;
 }
 
-bool Preprocer::check_size(ssize_t width, ssize_t height) const
+bool Preprocer::check_size(const PrepareOpts& opts, ssize_t width, ssize_t height) const
 {
-    return staging::between<ssize_t>(width, Config::instance()->img_min_width, Config::instance()->img_max_width)
-        && staging::between<ssize_t>(height, Config::instance()->img_min_height, Config::instance()->img_max_height);
+    return staging::between<ssize_t>(width, opts.img_min_width, opts.img_max_width)
+        && staging::between<ssize_t>(height, opts.img_min_height, opts.img_max_height);
 }
 
 Preprocer::Preprocer()
