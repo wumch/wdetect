@@ -21,7 +21,20 @@
 #ifndef PHP_WDETECT_H
 #define PHP_WDETECT_H
 
-extern zend_module_entry wdetect_module_entry;
+#ifdef HAVE_CONFIG_H
+extern "C" {
+#   include "config.h"
+}
+#endif
+
+extern "C" {
+#include "predef.hpp"
+#include "php5/main/php.h"
+#include "php5/main/php_ini.h"
+#include "php5/ext/standard/info.h"
+}
+
+extern "C" zend_module_entry wdetect_module_entry;
 #define phpext_wdetect_ptr &wdetect_module_entry
 
 #ifdef PHP_WIN32
@@ -33,7 +46,10 @@ extern zend_module_entry wdetect_module_entry;
 #endif
 
 #ifdef ZTS
-#include "TSRM.h"
+BEGIN_EXTERN_C()
+#include "php5/TSRM/TSRM.h"
+}
+END_EXTERN_C()
 #endif
 
 PHP_MINIT_FUNCTION(wdetect);
@@ -41,18 +57,6 @@ PHP_MSHUTDOWN_FUNCTION(wdetect);
 PHP_RINIT_FUNCTION(wdetect);
 PHP_RSHUTDOWN_FUNCTION(wdetect);
 PHP_MINFO_FUNCTION(wdetect);
-
-PHP_FUNCTION(confirm_wdetect_compiled);	/* For testing, remove later. */
-
-/* 
-  	Declare any global variables you may need between the BEGIN
-	and END macros here:     
-
-ZEND_BEGIN_MODULE_GLOBALS(wdetect)
-	long  global_value;
-	char *global_string;
-ZEND_END_MODULE_GLOBALS(wdetect)
-*/
 
 /* In every utility function you add that needs to use variables 
    in php_wdetect_globals, call TSRMLS_FETCH(); after declaring other 
@@ -65,10 +69,16 @@ ZEND_END_MODULE_GLOBALS(wdetect)
 */
 
 #ifdef ZTS
-#define WDETECT_G(v) TSRMG(wdetect_globals_id, zend_wdetect_globals *, v)
+#   define WDETECT_G(v) TSRMG(wdetect_globals_id, zend_wdetect_globals *, v)
 #else
-#define WDETECT_G(v) (wdetect_globals.v)
+#   define WDETECT_G(v) (wdetect_globals.v)
 #endif
+
+PHP_METHOD(WDetecter, __construct);
+PHP_METHOD(WDetecter, __destruct);
+PHP_METHOD(WDetecter, prepare);
+PHP_METHOD(WDetecter, locate);
+PHP_METHOD(WDetecter, detect);
 
 #endif	/* PHP_WDETECT_H */
 
