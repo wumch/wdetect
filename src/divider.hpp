@@ -2,11 +2,13 @@
 #pragma once
 
 #include "predef.hpp"
+#include <cstdio>
 #include <vector>
 #include <set>
 #include <utility>
 #include <tr1/unordered_map>
 #include <boost/static_assert.hpp>
+#include <boost/dynamic_bitset.hpp>
 #include "cvdef.hpp"
 #include "facade.hpp"
 
@@ -22,6 +24,7 @@ protected:
     typedef std::set<mark_t> EquaList;
     typedef std::tr1::unordered_map<mark_t, EquaList> EquaMap;
     typedef std::vector<mark_t> MarkList;
+    typedef boost::dynamic_bitset<uint64_t> Check;
 
     static const mark_t invalid_mark = 0;
 
@@ -34,6 +37,7 @@ protected:
 
     mark_t last_mark;
     MarkList marks;
+    Check check;
 
     const Config::BinaryColor fg;
     const Config::BinaryColor bg;
@@ -44,13 +48,8 @@ public:
     explicit Divider(const cv::Mat& img_, const OptsType& opts_, ImageList& res_)
         : img(img_), opts(opts_), res(res_), last_mark(0),
           fg(Config::fg(opts.inverse)), bg(Config::bg(opts.inverse)),
-          col_idx_max(shadow.cols - 1), row_idx_max(shadow.rows - 1)
-    {
-        CS_DUMP((int)fg);
-        CS_DUMP((int)bg);
-        CS_DUMP(col_idx_max);
-        CS_DUMP(row_idx_max);
-    }
+          col_idx_max(img.cols - 1), row_idx_max(img.rows - 1)
+    {}
 
     void divide()
     {
@@ -58,6 +57,7 @@ public:
         CS_RETURN_IF(!(shadow.cols > 1 && shadow.rows > 1));
         mark();
         separate();
+        dump();
     }
 
 protected:
@@ -122,10 +122,6 @@ protected:
                     *res_px++ = (*px == cur_mark) ? fg : bg;
                 }
             }
-            WDT_IM_SHOW(img(it->second));
-//            res[i].setTo(bg);
-//            img(poses[i].second).copyTo(res[i], mask);
-            WDT_IM_SHOW(res_img);
         }
     }
 
@@ -139,9 +135,7 @@ protected:
 
     void merge()
     {
-        CS_DUMP(equa_map.size());
         merge_equas();
-        CS_DUMP(equa_map.size());
 
         MarkList map;
         for (EquaMap::const_iterator it = equa_map.begin(); it != equa_map.end(); ++it)
@@ -154,7 +148,6 @@ protected:
                 }
                 map[*eit] = it->first;
             }
-            marks.push_back(it->first);
         }
 
         for (isize_t row = 0; row < shadow.rows; ++row)
@@ -186,12 +179,22 @@ protected:
                     {
                         if (*eit == it->first)
                         {
+                            CS_SAY("found " << it->first << " in equivalence-map of " << iit->first);
                             iit->second.insert(it->second.begin(), it->second.end());
                             equa_map.erase(it);
+                            check[it->first] = false;
                             return merge_equas();
                         }
                     }
                 }
+            }
+        }
+
+        for (size_t i = 0; i < check.size(); ++i)
+        {
+            if (check[i])
+            {
+                marks.push_back(i);
             }
         }
     }
@@ -276,7 +279,7 @@ protected:
                 if (*px == fg)
                 {
                     around.reset(row, col);
-                    CS_SAY("at [" << col << "," << row << "]");
+//                    CS_SAY("at [" << col << "," << row << "]");
                     mark_center_px(px, around, left_mark);
                 }
                 else
@@ -310,7 +313,7 @@ protected:
             {
                 if (found)
                 {
-                    CS_SAY("mark value (" << a.tl << "," << left_mark << ") are equialence.");
+//                    CS_SAY("mark value (" << a.tl << "," << left_mark << ") are equialence.");
                     record_equa(left_mark, a.tl);
                 }
                 else
@@ -323,7 +326,7 @@ protected:
             {
                 if (found)
                 {
-                    CS_SAY("mark value (" << a.t << "," << left_mark << ") are equialence.");
+//                    CS_SAY("mark value (" << a.t << "," << left_mark << ") are equialence.");
                     record_equa(left_mark, a.t);
                 }
                 else
@@ -336,7 +339,7 @@ protected:
             {
                 if (found)
                 {
-                    CS_SAY("mark value (" << a.tr << "," << left_mark << ") are equialence.");
+//                    CS_SAY("mark value (" << a.tr << "," << left_mark << ") are equialence.");
                     record_equa(left_mark, a.tr);
                 }
                 else
@@ -362,7 +365,7 @@ protected:
                 *px = above_mark = t;
                 if (tr != bg && tr != t)
                 {
-                    CS_SAY("mark value (" << tr << "," << t << ") at [" << 1 << "," << 0 << "] are equialence.");
+//                    CS_SAY("mark value (" << tr << "," << t << ") at [" << 1 << "," << 0 << "] are equialence.");
                     record_equa(tr, t);
                 }
             }
@@ -457,6 +460,7 @@ protected:
             key = b;
             val = a;
         }
+        check[val] = false;
         EquaMap::iterator it = equa_map.find(key);
         if (it == equa_map.end())
         {
@@ -497,6 +501,11 @@ protected:
         {
             ++last_mark;
         }
+        if (!(last_mark < check.size()))
+        {
+            check.resize(last_mark + 1, false);
+        }
+        check[last_mark] = true;
         return last_mark;
     }
 
@@ -518,6 +527,28 @@ protected:
     const pix_t* px_ptr(isize_t row, isize_t col) const
     {
         return shadow.ptr<pix_t>(row) + col;
+    }
+
+    void dump()
+    {
+        std::printf("\n");
+        for (isize_t row = 0; row < shadow.rows; ++row)
+        {
+            pix_t* px = shadow.ptr<pix_t>(row);
+            for (isize_t col = 0; col < shadow.cols; ++col)
+            {
+                if (px[col] == bg)
+                {
+                    std::printf("  ");
+                }
+                else
+                {
+                    std::printf("%2d", px[col]);
+                }
+            }
+            std::printf("\n");
+        }
+        std::printf("\n");
     }
 };
 

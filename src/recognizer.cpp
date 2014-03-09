@@ -2,9 +2,6 @@
 #include "recognizer.hpp"
 #include "math.hpp"
 #include "facade.hpp"
-#if CS_DEBUG
-#   include <opencv2/highgui/highgui.hpp>
-#endif
 
 namespace wdt {
 
@@ -28,9 +25,8 @@ void Recognizer::detect_vline(Sophist& sop) const
                 prev_line = col;
             }
         }
-        col += 1;   // 一条线可能有2像素粗
+        col += 1;
     }
-    CS_DUMP((int)sop.vline);
     if (sop.vline == Sophist::unknown_num)
     {
         sop.vline = 0;
@@ -40,7 +36,7 @@ void Recognizer::detect_vline(Sophist& sop) const
 bool Recognizer::is_vline(const Sophist& sop, int32_t col) const
 {
     int32_t gap = 0;
-    for (int32_t row = 0, end = sop.rows; row < end - 1; ++row)
+    for (int32_t row = 0, end = sop.rows; row < end; ++row)
     {
         if (!sop.is_fg(col, row))
         {
@@ -58,6 +54,10 @@ bool Recognizer::is_vline(const Sophist& sop, int32_t col) const
                     }
                 }
             }
+            else
+            {
+                return false;
+            }
         }
     }
     return true;
@@ -74,7 +74,12 @@ void Recognizer::detect_hline(Sophist& sop) const
             {
                 if (sop.hline == Sophist::unknown_num)
                 {
-                    sop.hline = 1;
+                    Sophist::Pos pos = sop.cal_hline_pos(row);
+                    if (pos != Sophist::unknown)
+                    {
+                        sop.hline = 1;
+                        sop.hline_pos = pos;
+                    }
                 }
                 else
                 {
@@ -83,9 +88,8 @@ void Recognizer::detect_hline(Sophist& sop) const
                 prev_line = row;
             }
         }
-        row += 1;   // 一条线可能有2像素粗
+        row += 1;
     }
-    CS_DUMP((int)sop.hline);
     if (sop.hline == Sophist::unknown_num)
     {
         sop.hline = 0;
@@ -95,7 +99,7 @@ void Recognizer::detect_hline(Sophist& sop) const
 bool Recognizer::is_hline(const Sophist& sop, int32_t row) const
 {
     int32_t gap = 0;
-    for (int32_t col = 0, end = sop.cols; col < end - 1; ++col)
+    for (int32_t col = 0; col < sop.cols; ++col)
     {
         if (!sop.is_fg(col, row))
         {
@@ -112,6 +116,10 @@ bool Recognizer::is_hline(const Sophist& sop, int32_t row) const
                         }
                     }
                 }
+            }
+            else
+            {
+                return false;
             }
         }
     }
@@ -163,8 +171,6 @@ void Recognizer::detect_circle(Sophist& sop) const
         }
         ++point.y;
     }
-    CS_DUMP((int)sop.circle);
-    CS_DUMP(sop.circle_pos);
     if (sop.circle == Sophist::unknown_num)
     {
         sop.circle = 0;
@@ -257,7 +263,6 @@ bool Recognizer::contain_island(const Sophist& sop) const
 
 digit_t Recognizer::recognize(Sophist& sop) const
 {
-    WDT_IM_SHOW(sop.img);
     if (is_dot(sop))
     {
         return Config::digit_dot;
@@ -309,6 +314,7 @@ digit_t Recognizer::recognize(Sophist& sop) const
         else if (sop.hline == 1)
         {
             detect_vline(sop);
+            CS_DUMP(sop.hline_pos);
             if (sop.vline == 0)
             {
                 if (sop.hline_pos == Sophist::bottom)

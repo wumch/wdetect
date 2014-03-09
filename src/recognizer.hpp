@@ -28,12 +28,15 @@ public:
     Pos hline_pos;
     Pos circle_pos;
 
+    const Config::BinaryColor fg, bg;
+
 public:
     Sophist(const cv::Mat& bimg, const NumOpts& opts_)
         : img(bimg), opts(opts_), cols(img.size().width), rows(img.size().height),
           hline(unknown_num), vline(unknown_num),
           circle(unknown_num), top_circle(unknown_num), bottom_circle(unknown_num),
-          hline_pos(unknown), circle_pos(unknown)
+          hline_pos(unknown), circle_pos(unknown),
+          fg(Config::fg(opts.inverse)), bg(Config::bg(opts.inverse))
     {}
 
     CS_FORCE_INLINE bool is_fg(int32_t col, int32_t row) const
@@ -48,11 +51,7 @@ public:
 
     CS_FORCE_INLINE Pos cal_circle_pos(int32_t row_begin, int32_t row_end) const
     {
-        int32_t top_quantile = round(rows * 0.4), bottom_quantile = round(rows * 0.6);
-        CS_DUMP(row_begin);
-        CS_DUMP(row_end);
-        CS_DUMP(top_quantile);
-        CS_DUMP(bottom_quantile);
+        int32_t top_quantile = round(rows * 0.3), bottom_quantile = round(rows * 0.65);
         if (row_begin <= top_quantile)
         {
             if (row_end >= bottom_quantile)
@@ -90,7 +89,7 @@ public:
 protected:
     CS_FORCE_INLINE bool is_fg_color(int32_t color) const
     {
-        return color == Config::black;
+        return color == fg;
     }
 };
 

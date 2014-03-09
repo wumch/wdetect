@@ -44,20 +44,6 @@ protected:
         : img(img_), opts(opts_), res(res_), fg_color(opts.inverse ? Config::white : Config::black)
     {}
 
-    static const class BoundCmper
-    {
-    public:
-        bool operator()(const Bound& left, const Bound& right) const
-        {
-            return right.x < left.x;
-        }
-    } bound_cmper;
-
-    CS_FORCE_INLINE void sort_bounds(BoundList& bounds) const
-    {
-        std::sort(bounds.begin(), bounds.end(), bound_cmper);
-    }
-
     CS_FORCE_INLINE bool adjust(Bound& bound) const
     {
         isize_t left, top, right, bottom;
@@ -211,6 +197,22 @@ protected:
     bool is_fg(uint8_t color) const
     {
         return color == fg_color;
+    }
+
+    bool prepare()
+    {
+        Bound bound;
+        CS_RETURN_IF(!adjust(bound), false);
+        WDT_IM_SHOW(img(bound));
+
+        divide(img(bound));
+
+        if (CS_BUNLIKELY(digit_imgs.empty()))
+        {
+            res.code = fo_no_match;
+            return false;
+        }
+        return true;
     }
 };
 
