@@ -81,11 +81,14 @@ PHP_MINIT_FUNCTION(wdetect)
 
 	_WDT_CLASS_CONST_LONG("OK", wdt::success);
 	_WDT_CLASS_CONST_LONG("ERR_UNKNOWN", wdt::failure);
+	_WDT_CLASS_CONST_LONG("ERR_WRONG_PARAM", wdt::fo_wrong_param);
 
-	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_NON_EXISTS", wdt::fo_img_file_nonexists);
+	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_NONEXISTS", wdt::fo_img_file_nonexists);
+	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_UNREADABLE", wdt::fo_img_file_unreadable);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_EXT", wdt::fo_img_file_ext);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_SIZE", wdt::fo_img_file_size);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_TYPE", wdt::fo_img_type);
+	_WDT_CLASS_CONST_LONG("ERR_IMG_CONTENT", wdt::fo_img_type);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_SIZE", wdt::fo_img_size);
 
 	_WDT_CLASS_CONST_LONG("ERR_NO_MATCH", wdt::fo_no_match);

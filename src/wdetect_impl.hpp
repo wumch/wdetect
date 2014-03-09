@@ -2,7 +2,7 @@
 #pragma once
 
 #include "php_wdetect.hpp"
-#include <cstdio>
+#include <cstring>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/tuple/to_seq.hpp>
@@ -142,7 +142,7 @@ wdt::IntegerOpts Proxy::load_opts<wdt::IntegerOpts>(const zval* options)
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
         vline_min_gap, hline_min_gap,
-        comma_width, comma_height,
+        comma_max_width, comma_max_height,
         comma_min_area, comma_protrude,
         left, top, right, bottom
     );
@@ -161,7 +161,7 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
         vline_min_gap, hline_min_gap,
-        dot_width, dot_height,
+        dot_max_width, dot_max_height,
         dot_min_area,
         percent_width,
         left, top, right, bottom
@@ -299,3 +299,6 @@ void Proxy::init_retval(zval* return_value)
 {
     array_init(return_value);
 }
+
+void Proxy::set_origin(wdt::Detecter* detecter, wdt::isize_t left, wdt::isize_t top)
+{}

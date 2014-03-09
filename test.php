@@ -14,6 +14,21 @@ else if (!class_exists($className))
 
 class Detecter
 {
+    protected $error = array(
+        WDetecter::ERR_UNKNOWN => '未知错误',
+        WDetecter::ERR_WRONG_PARAM => '参数错误',
+        WDetecter::ERR_IMG_FILE_NONEXISTS => '图片文件不存在',
+        WDetecter::ERR_IMG_FILE_UNREADABLE => '无法读取图片文件内容',
+        WDetecter::ERR_IMG_FILE_EXT => '不支持的图片文件类型（扩展名）',
+        WDetecter::ERR_IMG_FILE_SIZE => '图片文件体积不合格',
+        WDetecter::ERR_IMG_TYPE => '不支持的图片文件类型（文件头）',
+        WDetecter::ERR_IMG_CONTENT => '图片文件内容有误',
+        WDetecter::ERR_IMG_SIZE => '图片尺寸不合格',
+        WDetecter::ERR_NO_MATCH => '找不到符合条件的图像',
+        WDetecter::ERR_DETECT_FAILED => '探测失败',
+        WDetecter::ERR_RECOGNIZE_FAILED => '识别失败',
+    );
+
     public function __construct()
     {
     }
@@ -124,16 +139,16 @@ class NumOpts extends DIBOpts
 class IntegerOpts extends NumOpts
 {
     public $type = WDetecter::CMD_DETECT_INTEGER;
-    public $comma_width = 3, $comma_height = 4,
-           $comma_min_area = 6, $comma_protrude = 2;
+    public $comma_max_width = 3, $comma_max_height = 4,
+           $comma_min_area = 3, $comma_protrude = 2;
 }
 
 class PercentOpts extends NumOpts
 {
     public $type = WDetecter::CMD_DETECT_PERCENT;
     public $percent_width = 11;
-    public $dot_width = 2, $dot_height = 2,
-           $dot_min_area = 4;
+    public $dot_max_width = 2, $dot_max_height = 2,
+           $dot_min_area = 2;
 }
 
 class SongdaROC extends IntegerOpts

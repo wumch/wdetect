@@ -2,7 +2,9 @@
 #pragma once
 
 #include "predef.hpp"
-#include <cstdio>
+#if CS_DEBUG
+#   include <cstdio>
+#endif
 #include <vector>
 #include <set>
 #include <utility>
@@ -57,7 +59,9 @@ public:
         CS_RETURN_IF(!(shadow.cols > 1 && shadow.rows > 1));
         mark();
         separate();
+#if CS_DEBUG
         dump();
+#endif
     }
 
 protected:
@@ -181,8 +185,8 @@ protected:
                         {
                             CS_SAY("found " << it->first << " in equivalence-map of " << iit->first);
                             iit->second.insert(it->second.begin(), it->second.end());
-                            equa_map.erase(it);
                             check[it->first] = false;
+                            equa_map.erase(it);
                             return merge_equas();
                         }
                     }
@@ -529,6 +533,8 @@ protected:
         return shadow.ptr<pix_t>(row) + col;
     }
 
+
+#if CS_DEBUG
     void dump()
     {
         std::printf("\n");
@@ -550,6 +556,7 @@ protected:
         }
         std::printf("\n");
     }
+#endif
 };
 
 }

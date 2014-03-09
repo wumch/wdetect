@@ -314,7 +314,6 @@ digit_t Recognizer::recognize(Sophist& sop) const
         else if (sop.hline == 1)
         {
             detect_vline(sop);
-            CS_DUMP(sop.hline_pos);
             if (sop.vline == 0)
             {
                 if (sop.hline_pos == Sophist::bottom)
@@ -344,7 +343,8 @@ digit_t Recognizer::recognize(Sophist& sop) const
 
 bool Recognizer::is_comma(const Sophist& sop) const
 {
-    if (sop.rows == sop.opts.comma_height && sop.cols == sop.opts.comma_width)
+    if (sop.rows && sop.rows <= sop.opts.comma_max_height &&
+        sop.cols && sop.cols <= sop.opts.comma_max_width)
     {
         int32_t area = 0;
         for (int32_t row = 0; row < sop.rows; ++row)
@@ -361,7 +361,8 @@ bool Recognizer::is_comma(const Sophist& sop) const
 
 bool Recognizer::is_dot(const Sophist& sop) const
 {
-    if (sop.rows == sop.opts.dot_height && sop.cols == sop.opts.dot_width)
+    if (sop.rows && sop.rows <= sop.opts.dot_max_height &&
+        sop.cols && sop.cols <= sop.opts.dot_max_width)
     {
         int32_t area = 0;
         for (int32_t row = 0; row < sop.rows; ++row)
@@ -379,8 +380,10 @@ bool Recognizer::is_dot(const Sophist& sop) const
 digit_t Recognizer::recognize_5_and_7(const Sophist& sop) const
 {
     bool blank_began = false;
-    int32_t fg_threshold = round(sop.cols * 0.31);
-    int32_t lr_delimiter = round(sop.cols * 0.48);
+    const int32_t fg_threshold = round(sop.cols * 0.31);
+    const int32_t lr_delimiter = round(sop.cols * 0.48);
+    CS_DUMP(fg_threshold);
+    CS_DUMP(lr_delimiter);
     int32_t maybe_5 = 0, maybe_7 = 0;
     for (int32_t row = 1, end = round(sop.rows * 0.5); row < end; ++row)
     {
@@ -394,29 +397,34 @@ digit_t Recognizer::recognize_5_and_7(const Sophist& sop) const
                 fg_col = col;
             }
         }
+        CS_DUMP(fgs);
+        CS_DUMP(fg_col);
         if (fgs <= fg_threshold)
         {
-            if (blank_began)
+            blank_began = true;
+            if (fg_col == -1)
             {
-                if (fg_col == -1)
-                {
-                    return Config::invalid_digit;
-                }
-                else if (fg_col < lr_delimiter)
-                {
-                    ++maybe_5;
-                }
-                else
-                {
-                    ++maybe_7;
-                }
+                return Config::invalid_digit;
+            }
+            else if (fg_col < lr_delimiter)
+            {
+                ++maybe_5;
             }
             else
             {
-                blank_began = true;
+                ++maybe_7;
+            }
+        }
+        else
+        {
+            if (blank_began)
+            {
+                break;
             }
         }
     }
+    CS_DUMP(maybe_5);
+    CS_DUMP(maybe_7);
     if (maybe_5 > 1 && maybe_7 <= 1)
     {
         return 5;

@@ -5,9 +5,6 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#if CS_DEBUG
-#   include <opencv2/highgui/highgui.hpp>
-#endif
 #include "numdetecterbase.hpp"
 #include "cvdef.hpp"
 #include "facade.hpp"
@@ -32,9 +29,9 @@ public:
         DigitList digits;
         digits.reserve(digit_imgs.size());
         bool broken = false;
-        for (BoundList::const_iterator it = digit_imgs.begin(); it != digit_imgs.end(); ++it)
+        for (ImageList::const_iterator it = digit_imgs.begin(); it != digit_imgs.end(); ++it)
         {
-            digit_t digit = recognizer.recognize(crop(*it), opts);
+            digit_t digit = recognizer.recognize(*it, opts);
             CS_DUMP(digit);
             if (CS_BUNLIKELY(digit == digit_comma || digit == invalid_digit))
             {

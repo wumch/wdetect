@@ -2,11 +2,11 @@
 #pragma once
 
 #include "predef.hpp"
+#include <cstdio>
 #include <algorithm>
 #include <boost/static_assert.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include "cvdef.hpp"
 #include "facade.hpp"
 #include "divider.hpp"
@@ -70,7 +70,7 @@ protected:
     num_t digits_to_num(const DigitList& digits) const
     {
         num_t result = 0;
-        for (int32_t i = digits.size(); i > 0; --i)
+        for (int32_t i = digits.size() - 1; i >= 0; --i)
         {
             // the Qin Jiushao Algorithm, created in Chinese Song Dynasty.
             result = (result << 3) + (result << 1) + digits[i];

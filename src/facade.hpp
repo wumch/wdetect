@@ -160,10 +160,10 @@ public:
     isize_t vline_max_break, hline_max_break;  // 线最大断点数
     isize_t vline_min_gap, hline_min_gap;      // 线之间最小间隔
 
-    isize_t comma_width, comma_height,
+    isize_t comma_max_width, comma_max_height,
         comma_min_area, comma_protrude;
 
-    isize_t dot_width, dot_height,
+    isize_t dot_max_width, dot_max_height,
         dot_min_area;
 };
 
