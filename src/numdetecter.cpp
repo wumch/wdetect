@@ -44,7 +44,7 @@ bool NumDetecter::separated(const cv::Mat& frag, isize_t col) const
     BOOST_STATIC_ASSERT(sizeof(uchar) == sizeof(uint8_t));
     for (isize_t row = 0; row < frag.rows; ++row)
     {
-        if (frag.ptr<uint8_t*>(row)[col] != Config::white)
+        if (frag.ptr<uint8_t>(row)[col] != Config::white)
         {
             return false;
         }

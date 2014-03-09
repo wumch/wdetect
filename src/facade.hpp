@@ -3,6 +3,7 @@
 
 #include "predef.hpp"
 #include <map>
+#include <functional>
 #include <string>
 
 namespace wdt {
@@ -18,6 +19,16 @@ public:
     typedef enum {
         black = 0, white = 255,
     } BinaryColor;
+
+    static BinaryColor fg(bool inverse = false)
+    {
+        return inverse ? white : black;
+    }
+
+    static BinaryColor bg(bool inverse = false)
+    {
+        return inverse ? black : white;
+    }
 };
 
 typedef enum {
@@ -50,7 +61,7 @@ typedef enum {
 } ResultCode;
 
 // to resident into php array, it's better to be an ordered map.
-typedef std::map<int32_t, rate_t> RateList;
+typedef std::map<int32_t, rate_t, std::less<int32_t> > RateList;
 
 // prepare/locate/detect result.
 class Result
@@ -116,6 +127,7 @@ class DetectOpts: public Options
 public:
     int32_t type;
     isize_t x_err, y_err;   // x,y 允许误差
+    bool inverse;           // 反色
 };
 
 class LocateOpts: public DetectOpts
@@ -142,7 +154,7 @@ public:
 class NumOpts: public DIBOpts
 {
 public:
-    isize_t digit_height;
+    isize_t digit_height, digit_min_width, digit_max_width;
     isize_t circle_min_diameter_v;    // 数字形状中圈的最小直径
     isize_t vline_adj, hline_adj;     // 横/竖线允许的邻接宽度
     isize_t vline_max_break, hline_max_break;  // 线最大断点数
@@ -156,14 +168,35 @@ public:
 };
 
 class IntegerOpts: public NumOpts
-{
-public:
-};
+{};
 
 class PercentOpts: public NumOpts
 {
 public:
     isize_t percent_width;
+};
+
+typedef enum {
+    integer, percent
+} NumDetecterKind;
+
+template<NumDetecterKind kind>
+class NumDetecterTraits;
+
+template<>
+class NumDetecterTraits<integer>
+{
+public:
+    typedef IntegerOpts OptsType;
+    typedef IntegerRes  ResType;
+};
+
+template<>
+class NumDetecterTraits<percent>
+{
+public:
+    typedef PercentOpts OptsType;
+    typedef PercentRes  ResType;
 };
 
 }

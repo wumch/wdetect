@@ -7,6 +7,8 @@
 
 namespace wdt {
 
+typedef uint8_t pix_t;  // 二值图像 像素值 type
+
 typedef cv::Point2i Point;
 typedef std::vector<Point> PointList;
 

@@ -14,50 +14,28 @@ else if (!class_exists($className))
 
 class Detecter
 {
-    protected $prepareOptions = array(
-        'img_file_min_size' => 24,
-        'img_file_max_size' => 8388608, // 8MB
-        'img_min_width' => 160,
-        'img_max_width' => 1920,
-        'img_min_height' => 120,
-        'img_max_height' => 1280,
-    );
-
-    protected $locateOptions = array(
-        'type' => WDetecter::CMD_LOCATE_CHART,
-        'chart_min_width' => 100,
-        'chart_max_width' => 170,
-        'chart_min_height' => 32,
-        'chart_max_height' => 132,
-        'echelons' => 3,
-        'echelon_padding_left' => 1,
-    );
-
-    protected $detectOptions = array(
-        'type' => WDetecter::CMD_DETECT_INTEGER,
-    );
-
     public function __construct()
     {
     }
 
     public function detect($imgFile)
     {
-        $detecter = new WDetecter;
+        global $className;
+        $detecter = new $className;
         $prepareOpts = (array)(new PrepareOpts);
         $prepareOpts['img_file'] = $imgFile;
         print_r($prepareOpts);
         $prepareRes = $detecter->prepare($prepareOpts);
         print_r($prepareRes);
         echo str_repeat('-', 40), PHP_EOL;
-        if ($prepareRes[0] === WDetecter::OK)
+        if ($prepareRes[0] === $className::OK)
         {
             $locateOpts = (array)(new ChartOpts);
             print_r($locateOpts);
             $locateRes = $detecter->locate($locateOpts);
             print_r($locateRes);
             echo str_repeat('-', 40), PHP_EOL;
-            if ($locateRes[0] === WDetecter::OK)
+            if ($locateRes[0] === $className::OK)
             {
                 $songdaROC = new SongdaROC;
                 $songdaROC->adjust($locateRes[2][0], $locateRes[2][1], 2);
@@ -76,8 +54,9 @@ class Detecter
 
     public static function check()
     {
-        assert(WDetecter::OK == 0);
-        assert(WDetecter::ERR_UNKNOWN == 1);
+        global $className;
+        assert($className::OK == 0);
+        assert($className::ERR_UNKNOWN == 1);
     }
 }
 
@@ -108,13 +87,14 @@ class ChartOpts extends LocateOpts
     public $chart_min_height = 32;
     public $chart_max_height = 132;
     public $echelons = 3;
-    public $echelon_padding_left = 1;
+    public $echelon_padding_left = 0;
 }
 
 class DetectOpts extends Options
 {
     public $type;
     public $x_err = 1, $y_err = 1;
+    public $inverse = false;
 }
 
 class DIBOpts extends DetectOpts
@@ -133,6 +113,8 @@ class DIBOpts extends DetectOpts
 class NumOpts extends DIBOpts
 {
     public $digit_height = 9;
+    public $digit_min_width = 4;
+    public $digit_max_width = 7;
     public $circle_min_diameter_v = 2;
     public $vline_adj = 0, $hline_adj = 0;
     public $vline_max_break = 0, $hline_max_break = 0;

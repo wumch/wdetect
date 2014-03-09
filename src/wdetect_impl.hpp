@@ -122,7 +122,7 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
     wdt::ChartOpts opts;
     zval** medium;
     _WDT_FETCH_LONG_OPTS(options, opts, medium,
-        x_err, y_err,
+        x_err, y_err, inverse,
         chart_min_width, chart_max_width,
         chart_min_height, chart_max_height,
         echelons, echelon_padding_left
@@ -136,8 +136,8 @@ wdt::IntegerOpts Proxy::load_opts<wdt::IntegerOpts>(const zval* options)
     wdt::IntegerOpts opts;
     zval** medium;
     _WDT_FETCH_LONG_OPTS(options, opts, medium,
-        x_err, y_err,
-        digit_height,
+        x_err, y_err, inverse,
+        digit_height, digit_min_width, digit_max_width,
         circle_min_diameter_v,
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
@@ -155,8 +155,8 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
     wdt::PercentOpts opts;
     zval** medium;
     _WDT_FETCH_LONG_OPTS(options, opts, medium,
-        x_err, y_err,
-        digit_height,
+        x_err, y_err, inverse,
+        digit_height, digit_min_width, digit_max_width,
         circle_min_diameter_v,
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
@@ -171,7 +171,6 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
 
 void Proxy::detect(wdt::Detecter* detecter, const zval* options, zval* return_value)
 {
-
     int32_t command;
     {
         zval** medium;
@@ -180,26 +179,26 @@ void Proxy::detect(wdt::Detecter* detecter, const zval* options, zval* return_va
     switch (command)
     {
     case wdt::detect_integer:
-        {
-            wdt::IntegerOpts opts = load_opts<wdt::IntegerOpts>(options);
-            wdt::IntegerRes res;
-            detecter->detect(opts, res);
-            form_retval(return_value, res);
-        }
-        break;
+    {
+        wdt::IntegerOpts opts = load_opts<wdt::IntegerOpts>(options);
+        wdt::IntegerRes res;
+        detecter->detect<wdt::integer>(opts, res);
+        form_retval(return_value, res);
+    }
+    break;
 
     case wdt::detect_percent:
-        {
-            wdt::PercentOpts opts = load_opts<wdt::PercentOpts>(options);
-            wdt::PercentRes res;
-            detecter->detect(opts, res);
-            form_retval(return_value, res);
-        }
-        break;
+    {
+        wdt::PercentOpts opts = load_opts<wdt::PercentOpts>(options);
+        wdt::PercentRes res;
+        detecter->detect<wdt::percent>(opts, res);
+        form_retval(return_value, res);
+    }
+    break;
 
     default:
         form_retval(return_value, false);
-        break;
+    break;
     }
 }
 
@@ -221,17 +220,17 @@ void Proxy::locate(wdt::Detecter* detecter, const zval* options, zval* return_va
     switch (command)
     {
     case wdt::locate_chart:
-        {
-            wdt::ChartOpts opts = load_opts<wdt::ChartOpts>(options);
-            wdt::ChartRes res;
-            detecter->locate(opts, res);
-            form_retval(return_value, res);
-        }
-        break;
+    {
+        wdt::ChartOpts opts = load_opts<wdt::ChartOpts>(options);
+        wdt::ChartRes res;
+        detecter->locate(opts, res);
+        form_retval(return_value, res);
+    }
+    break;
 
     default:
         form_retval(return_value, false);
-        break;
+    break;
     }
 }
 

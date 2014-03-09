@@ -3,10 +3,12 @@
 
 #include "predef.hpp"
 #include <opencv2/core/core.hpp>
+#include "numdetecterbase.hpp"
+#include "integerdetecter.hpp"
+#include "percentdetecter.hpp"
 #include "facade.hpp"
 
-namespace wdt
-{
+namespace wdt {
 
 class Detecter
 {
@@ -24,8 +26,14 @@ public:
 
     void set_origin(isize_t left, isize_t top);
 
-    void detect(const IntegerOpts& opts, IntegerRes& res) const;
-    void detect(const PercentOpts& opts, PercentRes& res) const;
+    template<NumDetecterKind kind>
+    CS_FORCE_INLINE void detect(
+        const typename NumDetecterTraits<kind>::OptsType& opts,
+        typename NumDetecterTraits<kind>::ResType& res) const
+    {
+        NumDetecter<kind> detecter(img, opts, res);
+        detecter.detect();
+    }
 };
 
 } // namespace wdt

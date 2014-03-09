@@ -3,15 +3,14 @@
 #include "preprocer.hpp"
 #include "locater.hpp"
 #include "integerdetecter.hpp"
-//#include "percentdetecter.hpp"
+#include "percentdetecter.hpp"
 
 namespace wdt
 {
 
 Detecter::Detecter()
     : left(0), top(0), offsets(false)
-{
-}
+{}
 
 void Detecter::set_origin(isize_t left_, isize_t top_)
 {
@@ -42,18 +41,6 @@ void Detecter::locate(const ChartOpts& opts, ChartRes& res) const
 {
     Locater locater(img, opts, res);
     locater.locate();
-}
-
-void Detecter::detect(const IntegerOpts& opts, IntegerRes& res) const
-{
-    IntegerDetecter detecter(img, opts, res);
-    detecter.detect();
-}
-
-void Detecter::detect(const PercentOpts& opts, PercentRes& res) const
-{
-    res.code = success;
-    res.percent = 19.87;
 }
 
 } // namespace wdt

@@ -67,11 +67,6 @@ void IntegerDetecter::detect()
     }
 }
 
-bool IntegerDetecter::adjust(Bound& bound) const
-{
-    return NumDetecter::adjust(opts, bound, res);
-}
-
 void IntegerDetecter::checkin(BoundList& bounds, const Bound& bound) const
 {
     bounds.push_back(bound);

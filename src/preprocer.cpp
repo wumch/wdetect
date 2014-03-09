@@ -46,6 +46,7 @@ cv::Mat Preprocer::binarize(const char* img_file) const
     cv::Mat gray_img;
     gray_img = cv::imread(img_file, CV_LOAD_IMAGE_GRAYSCALE);
     cv::Mat binary_img(gray_img.size(), CV_8UC1);
+    binary_img.setTo(0);
     if (!gray_img.empty())
     {
         cv::threshold(gray_img, binary_img, 0, Config::white, CV_THRESH_BINARY | CV_THRESH_OTSU);
