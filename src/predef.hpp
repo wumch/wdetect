@@ -1,8 +1,6 @@
 
 #pragma once
 
-#define CS_DEBUG 2
-
 #ifndef CS_DEBUG
 #   ifdef USE_WDETECT_DEBUG
 #       define CS_DEBUG 2

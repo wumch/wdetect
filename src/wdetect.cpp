@@ -88,12 +88,12 @@ PHP_MINIT_FUNCTION(wdetect)
 	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_EXT", wdt::fo_img_file_ext);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_FILE_SIZE", wdt::fo_img_file_size);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_TYPE", wdt::fo_img_type);
-	_WDT_CLASS_CONST_LONG("ERR_IMG_CONTENT", wdt::fo_img_type);
+	_WDT_CLASS_CONST_LONG("ERR_IMG_CONTENT", wdt::fo_img_content);
 	_WDT_CLASS_CONST_LONG("ERR_IMG_SIZE", wdt::fo_img_size);
 
 	_WDT_CLASS_CONST_LONG("ERR_NO_MATCH", wdt::fo_no_match);
 	_WDT_CLASS_CONST_LONG("ERR_DETECT_FAILED", wdt::fo_detect);
-	_WDT_CLASS_CONST_LONG("ERR_RECOGNIZE_FAILED", wdt::fo_img_size);
+	_WDT_CLASS_CONST_LONG("ERR_RECOGNIZE_FAILED", wdt::fo_recognize);
 
 	return SUCCESS;
 }

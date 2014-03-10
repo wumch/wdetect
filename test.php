@@ -1,7 +1,9 @@
 <?php
 
+namespace Snape\Utility;
+
 $moduleName = 'wdetect';
-$className = 'WDetecter';
+$className = '\WDetecter';
 
 if (!extension_loaded($moduleName))
 {
@@ -14,57 +16,133 @@ else if (!class_exists($className))
 
 class Detecter
 {
-    protected $error = array(
-        WDetecter::ERR_UNKNOWN => '未知错误',
-        WDetecter::ERR_WRONG_PARAM => '参数错误',
-        WDetecter::ERR_IMG_FILE_NONEXISTS => '图片文件不存在',
-        WDetecter::ERR_IMG_FILE_UNREADABLE => '无法读取图片文件内容',
-        WDetecter::ERR_IMG_FILE_EXT => '不支持的图片文件类型（扩展名）',
-        WDetecter::ERR_IMG_FILE_SIZE => '图片文件体积不合格',
-        WDetecter::ERR_IMG_TYPE => '不支持的图片文件类型（文件头）',
-        WDetecter::ERR_IMG_CONTENT => '图片文件内容有误',
-        WDetecter::ERR_IMG_SIZE => '图片尺寸不合格',
-        WDetecter::ERR_NO_MATCH => '找不到符合条件的图像',
-        WDetecter::ERR_DETECT_FAILED => '探测失败',
-        WDetecter::ERR_RECOGNIZE_FAILED => '识别失败',
+    protected static $errors = array(
+        \WDetecter::ERR_UNKNOWN => '未知错误',
+        \WDetecter::ERR_WRONG_PARAM => '参数错误',
+        \WDetecter::ERR_IMG_FILE_NONEXISTS => '图片文件不存在',
+        \WDetecter::ERR_IMG_FILE_UNREADABLE => '无法读取图片文件内容',
+        \WDetecter::ERR_IMG_FILE_EXT => '不支持的图片文件类型（扩展名）',
+        \WDetecter::ERR_IMG_FILE_SIZE => '图片文件体积不合格',
+        \WDetecter::ERR_IMG_TYPE => '不支持的图片文件类型（文件头）',
+        \WDetecter::ERR_IMG_CONTENT => '图片文件内容有误',
+        \WDetecter::ERR_IMG_SIZE => '图片尺寸不合格',
+        \WDetecter::ERR_NO_MATCH => '找不到符合条件的图像',
+        \WDetecter::ERR_DETECT_FAILED => '探测失败',
+        \WDetecter::ERR_RECOGNIZE_FAILED => '识别失败',
     );
 
-    public function __construct()
+    /**
+     * @var \WDetecter
+     */
+    protected $wdter;
+
+    protected $debug = false;
+
+    public function __construct($debug = false)
     {
+        $this->debug = $debug === true;
+        $this->wdter = new \WDetecter;
     }
 
-    public function detect($imgFile)
+    public function detectAll($imgFile)
     {
-        global $className;
-        $detecter = new $className;
         $prepareOpts = (array)(new PrepareOpts);
         $prepareOpts['img_file'] = $imgFile;
-        print_r($prepareOpts);
-        $prepareRes = $detecter->prepare($prepareOpts);
-        print_r($prepareRes);
-        echo str_repeat('-', 40), PHP_EOL;
-        if ($prepareRes[0] === $className::OK)
+        $this->printr($prepareOpts);
+        $prepareRes = $this->wdter->prepare($prepareOpts);
+        $this->printr($prepareRes);
+        if ($prepareRes[0] === \WDetecter::OK)
         {
-            $locateOpts = (array)(new ChartOpts);
-            print_r($locateOpts);
-            $locateRes = $detecter->locate($locateOpts);
-            print_r($locateRes);
+            $chartOpts = (array)(new Chart);
+            $this->printr($chartOpts);
+            $locateRes = $this->wdter->locate($chartOpts);
+            $this->printr($locateRes);
             echo str_repeat('-', 40), PHP_EOL;
-            if ($locateRes[0] === $className::OK)
+            if ($locateRes[0] === \WDetecter::OK)
             {
-                $songdaROC = new SongdaROC;
-                $songdaROC->adjust($locateRes[2][0], $locateRes[2][1], 2);
-                $detectOpts = (array)($songdaROC);
-                print_r($detectOpts);
-                $detectRes = $detecter->detect($detectOpts);
-                print_r($detectRes);
-                echo str_repeat('-', 40), PHP_EOL;
-                if ($detectRes)
+                $optClasses = array(
+                    'SongdaROC', 'TuwenROC', 'YuanwenROC', 'ShareROC',
+                    'Songda',
+                    'Tuwen', 'TuwenTimes', 'TuwenRate',
+                    'Yuanwen', 'YuanwenTimes', 'YuanwenRate',
+                    'Share', 'ShareTimes',
+                );
+                list($x0, $y0) = $locateRes[2];
+                foreach ($optClasses as &$optClass)
                 {
-                    echo 'done', PHP_EOL;
+                    $this->{'detect' . $optClass}($x0, $y0);
                 }
             }
         }
+    }
+
+    protected function detect(array $opts)
+    {
+        $this->println('opts:');
+        $this->printr($opts);
+        $res = $this->wdter->detect($opts);
+        $this->printr($res);
+        $code = array_shift($res);
+        if ($code === \WDetecter::OK)
+        {
+            return $res;
+        }
+        else
+        {
+            $this->println(static::$errors[$code]);
+            return false;
+        }
+    }
+
+    public function __call($method, $args)
+    {
+        if (strpos($method, 'detect') === 0)
+        {
+            $optClass = '\\Snape\\Utility\\' . substr($method, strlen('detect'));
+            $opts = null;
+            if (class_exists($optClass))
+            {
+                switch (count($args))
+                {
+                case 0:
+                    $opts = new $optClass;
+                    break;
+                case 1:
+                    $opts = new $optClass($args[0]);
+                    break;
+                case 2:
+                    $opts = new $optClass($args[0], $args[1]);
+                    break;
+                case 3:
+                    $opts = new $optClass($args[0], $args[1], $args[2]);
+                    break;
+                default:
+                    break;
+                }
+                if ($opts !== null)
+                {
+                    return $this->detect((array)$opts);
+                }
+            }
+        }
+        throw new \Exception('failed on invoking method ' . get_class($this) . '::' . $method . '.', 10086);
+    }
+
+    protected function println($content)
+    {
+        if ($this->debug)
+        {
+            echo $content, PHP_EOL;
+        }
+    }
+
+    protected function printr($arr)
+    {
+        if ($this->debug)
+        {
+            print_r($arr);
+        }
+        echo str_repeat('-', 40), PHP_EOL;
     }
 
     public static function check()
@@ -94,9 +172,10 @@ class LocateOpts extends Options
     public $type;
 }
 
-class ChartOpts extends LocateOpts
+// 中间左边漏斗图
+class Chart extends LocateOpts
 {
-    public $type = WDetecter::CMD_LOCATE_CHART;
+    public $type = \WDetecter::CMD_LOCATE_CHART;
     public $chart_min_width = 130;
     public $chart_max_width = 170;
     public $chart_min_height = 32;
@@ -123,6 +202,22 @@ class DIBOpts extends DetectOpts
         $this->top = $top + $y0;
         $this->bottom = $bottom + $y0;
     }
+
+    public function adjust($x0 = 0, $y0 = 0)
+    {
+        $this->left += $x0;
+        $this->right += $x0;
+        $this->top += $y0;
+        $this->bottom += $y0;
+    }
+
+    public function setPadding($padding)
+    {
+        $this->left -= $padding;
+        $this->top -= $padding;
+        $this->right += $padding;
+        $this->bottom += $padding;
+    }
 }
 
 class NumOpts extends DIBOpts
@@ -138,40 +233,195 @@ class NumOpts extends DIBOpts
 
 class IntegerOpts extends NumOpts
 {
-    public $type = WDetecter::CMD_DETECT_INTEGER;
+    public $type = \WDetecter::CMD_DETECT_INTEGER;
     public $comma_max_width = 3, $comma_max_height = 4,
            $comma_min_area = 3, $comma_protrude = 2;
 }
 
 class PercentOpts extends NumOpts
 {
-    public $type = WDetecter::CMD_DETECT_PERCENT;
+    public $type = \WDetecter::CMD_DETECT_PERCENT;
     public $percent_width = 11;
     public $dot_max_width = 2, $dot_max_height = 2,
            $dot_min_area = 2;
 }
 
-class SongdaROC extends IntegerOpts
+class ROCOpts extends IntegerOpts
 {
-    public function adjust($x0, $y0, $padding = 0)
-    {
-        $this->right = $x0 + 335;
-        $this->left = $this->right - 60;
-        $this->top = $y0 + 3;
-        $this->bottom = $this->top + $this->digit_height;
+    protected $padding = 2;
+    protected $width = 48;
+    protected $vgap = 38;
+    protected $turn = 0;
+    protected $baseTop = 3;
 
-        $this->left -= $padding;
-        $this->top -= $padding;
-        $this->right += $padding;
-        $this->bottom += $this->comma_protrude + $padding;
+    public $right = 335;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        $this->left = $this->right - $this->width;
+        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap;
+        $this->bottom = $this->top + $this->digit_height + $this->comma_protrude;
+        $this->setPadding($this->padding);
+        $this->adjust($x0, $y0);
     }
 }
 
-if ($argc)
+// 送达 图表右侧
+class SongdaROC extends ROCOpts
 {
-    $imgFile = count($argv) > 1 ? $argv[1] : "/data/fsuggest/wdetect.forgiven/data/1.jpg";
-    $detecter = new Detecter;
+    public $turn = 1;
+}
+
+// 图文 图表右侧
+class TuwenROC extends ROCOpts
+{
+    public $turn = 2;
+}
+
+// 原文 图表右侧
+class YuanwenROC extends ROCOpts
+{
+    public $turn = 3;
+}
+
+// 分享 图表右侧
+class ShareROC extends ROCOpts
+{
+    public $turn = 4;
+}
+
+class TabAssist
+{
+    protected static $offsetTop = 269;
+    protected static $padding = 3;
+
+    public static function populate($obj, $x0 = 0, $y0 = 0)
+    {
+        $obj->left += $x0;
+        $obj->right += $x0;
+        $obj->top = $y0 + static::$offsetTop;
+        $obj->bottom = $obj->top + $obj->digit_height;
+        if ($obj instanceof IntegerOpts)
+        {
+            $obj->bottom += $obj->comma_protrude;
+        }
+        $obj->setPadding(static::$padding);
+    }
+}
+
+// 送达 人数
+class Songda extends IntegerOpts
+{
+    public $left = 3;
+    public $right = 93;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 人数
+class Tuwen extends IntegerOpts
+{
+    public $left = 93;
+    public $right = 168;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 次数
+class TuwenTimes extends IntegerOpts
+{
+    public $left = 168;
+    public $right = 247;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 转化率
+class TuwenRate extends PercentOpts
+{
+    public $left = 247;
+    public $right = 354;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 人数
+class Yuanwen extends IntegerOpts
+{
+    public $left = 354;
+    public $right = 416;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 次数
+class YuanwenTimes extends IntegerOpts
+{
+    public $left = 416;
+    public $right = 479;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 转化率
+class YuanwenRate extends PercentOpts
+{
+    public $left = 479;
+    public $right = 586;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 人数
+class Share extends IntegerOpts
+{
+    public $left = 586;
+    public $right = 650;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 次数
+class ShareTimes extends IntegerOpts
+{
+    public $left = 650;
+    public $right = 715;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+if ($GLOBALS['argc'])
+{
+    $imgFile = $GLOBALS['argc'] > 1 ? $GLOBALS['argv'][1] : "/data/fsuggest/wdetect.forgiven/data/1.jpg";
+    $detecter = new Detecter(true);
     $detecter->check();
-    $detecter->detect($imgFile);
+    $detecter->detectAll($imgFile);
 }
 
