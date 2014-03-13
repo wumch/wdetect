@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "../config.h"
+
 #ifndef CS_DEBUG
 #   ifdef USE_WDETECT_DEBUG
 #       define CS_DEBUG 2
@@ -10,13 +12,12 @@
 #endif
 
 #include "meta.hpp"
-#include "../config.h"
 
 #ifndef HAVE_CONFIG_H
 #   define HAVE_CONFIG_H 1
 #endif
 
-#define WDT_NO_IM_DISPLAY 0
+#define WDT_NO_IM_DISPLAY 1
 
 #if CS_DEBUG && !WDT_NO_IM_DISPLAY
 #   include <opencv2/highgui/highgui.hpp>

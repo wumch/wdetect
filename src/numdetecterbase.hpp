@@ -3,6 +3,7 @@
 
 #include "predef.hpp"
 #include <cstdio>
+#include <map>
 #include <algorithm>
 #include <boost/static_assert.hpp>
 #include <opencv2/core/core.hpp>
@@ -33,7 +34,7 @@ protected:
 
     const cv::Mat& img;
     const OptsType& opts;
-    mutable ImageList digit_imgs;
+    mutable PositedImageList pils;
     ResType& res;
 
     BOOST_STATIC_ASSERT(sizeof(uchar) == sizeof(uint8_t));
@@ -70,7 +71,7 @@ protected:
     num_t digits_to_num(const DigitList& digits) const
     {
         num_t result = 0;
-        for (int32_t i = digits.size() - 1; i >= 0; --i)
+        for (int32_t i = 0; i < digits.size(); ++i)
         {
             // the Qin Jiushao Algorithm, created in Chinese Song Dynasty.
             result = (result << 3) + (result << 1) + digits[i];
@@ -97,8 +98,9 @@ protected:
 
     void divide(const cv::Mat& frag) const
     {
-        Divider<kind> divider(frag, opts, digit_imgs);
+        Divider<kind> divider(frag, opts, pils);
         divider.divide();
+        pils.assemble();
     }
 
     void _devide(const cv::Mat& frag, BoundList& bounds) const
@@ -207,7 +209,7 @@ protected:
 
         divide(img(bound));
 
-        if (CS_BUNLIKELY(digit_imgs.empty()))
+        if (CS_BUNLIKELY(pils.imgs.empty()))
         {
             res.code = fo_no_match;
             return false;

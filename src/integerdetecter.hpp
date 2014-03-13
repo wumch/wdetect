@@ -26,10 +26,10 @@ public:
     {
         prepare();
         DigitList digits;
-        CS_DUMP(digit_imgs.size());
-        digits.reserve(digit_imgs.size());
+        CS_DUMP(pils.imgs.size());
+        digits.reserve(pils.imgs.size());
         bool broken = false;
-        for (ImageList::const_iterator it = digit_imgs.begin(); it != digit_imgs.end(); ++it)
+        for (ImageList::const_iterator it = pils.imgs.begin(); it != pils.imgs.end(); ++it)
         {
             digit_t digit = recognizer.recognize(*it, opts);
             WDT_IM_SHOW(*it);

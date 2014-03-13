@@ -15,6 +15,7 @@ public:
     static const digit_t invalid_digit = -1;
     static const digit_t digit_comma = -2;
     static const digit_t digit_dot = -3;
+    static const isize_t invalid_y_mode = -1;
 
     typedef enum {
         black = 0, white = 255,

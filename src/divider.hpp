@@ -16,6 +16,85 @@
 
 namespace wdt {
 
+class PositedImageList
+{
+public:
+    ImageList imgs;
+    PointList poses;
+    isize_t y_mode;
+
+    PositedImageList(const ImageList& imgs_, const BoundList& bounds)
+        : imgs(imgs_), poses(extract_tl(bounds)), y_mode(calc_y_mode())
+    {}
+
+    PositedImageList()
+    {}
+
+    void push_back(const cv::Mat& img, const Point& point)
+    {
+        imgs.push_back(img);
+        poses.push_back(point);
+    }
+
+    void pop_back()
+    {
+        imgs.pop_back();
+        poses.pop_back();
+    }
+
+    void assemble()
+    {
+        y_mode = calc_y_mode();
+    }
+
+    void reserve(size_t size)
+    {
+        imgs.reserve(size);
+        poses.reserve(size);
+    }
+
+protected:
+    PointList extract_tl(const BoundList& bounds) const
+    {
+        PointList points;
+        for (BoundList::const_iterator it = bounds.begin(); it != bounds.end(); ++it)
+        {
+            points.push_back(it->tl());
+        }
+        return points;
+    }
+
+    isize_t calc_y_mode() const
+    {
+        CS_RETURN_IF(poses.empty(), Config::invalid_y_mode);
+        typedef std::map<isize_t, int32_t> YCount;
+        YCount ycount;
+        for (PointList::const_iterator it = poses.begin(); it != poses.end(); ++it)
+        {
+            YCount::iterator yit = ycount.find(it->y);
+            if (yit == ycount.end())
+            {
+                ycount.insert(std::make_pair(it->y, 1));
+            }
+            else
+            {
+                ++yit->second;
+            }
+        }
+        static const class YPairCmper
+        {
+        public:
+            YPairCmper() {}
+            bool operator()(const YCount::iterator& left, const YCount::iterator& right) const
+            {
+                return right->second < left->second;
+            }
+        } y_pair_cmper;
+
+        return std::max(ycount.begin(), ycount.end(), y_pair_cmper)->first;
+    }
+};
+
 template<NumDetecterKind kind>
 class Divider
 {
@@ -32,7 +111,7 @@ protected:
 
     const cv::Mat& img;
     const OptsType& opts;
-    ImageList& res;
+    PositedImageList& pils;
 
     cv::Mat shadow;
     EquaMap equa_map;
@@ -47,8 +126,8 @@ protected:
     const isize_t col_idx_max, row_idx_max;
 
 public:
-    explicit Divider(const cv::Mat& img_, const OptsType& opts_, ImageList& res_)
-        : img(img_), opts(opts_), res(res_), last_mark(0),
+    explicit Divider(const cv::Mat& img_, const OptsType& opts_, PositedImageList& res_)
+        : img(img_), opts(opts_), pils(res_), last_mark(0),
           fg(Config::fg(opts.inverse)), bg(Config::bg(opts.inverse)),
           col_idx_max(img.cols - 1), row_idx_max(img.rows - 1)
     {}
@@ -72,7 +151,7 @@ protected:
     public:
         bool operator()(const MarkPos& left, const MarkPos& right) const
         {
-            return right.second.x < left.second.x;
+            return left.second.x < right.second.x;
         }
     } mark_pos_cmper;
 
@@ -108,14 +187,14 @@ protected:
             }
         }
 
-        res.reserve(poses.size());
+        pils.reserve(poses.size());
         std::sort(poses.begin(), poses.end(), mark_pos_cmper);
 
         for (MarkPosList::const_iterator it = poses.begin(); it != poses.end(); ++it)
         {
             const cv::Mat mask = shadow(it->second);
-            res.push_back(cv::Mat(it->second.size(), CV_8UC1));
-            cv::Mat& res_img = *res.rbegin();
+            pils.push_back(cv::Mat(it->second.size(), CV_8UC1), it->second.tl());
+            cv::Mat& res_img = *pils.imgs.rbegin();
             const mark_t cur_mark = it->first;
             for (isize_t row = 0; row < mask.rows; ++row)
             {
@@ -283,7 +362,6 @@ protected:
                 if (*px == fg)
                 {
                     around.reset(row, col);
-//                    CS_SAY("at [" << col << "," << row << "]");
                     mark_center_px(px, around, left_mark);
                 }
                 else
