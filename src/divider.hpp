@@ -7,6 +7,7 @@
 #endif
 #include <vector>
 #include <set>
+#include <algorithm>
 #include <utility>
 #include <tr1/unordered_map>
 #include <boost/static_assert.hpp>
@@ -138,6 +139,7 @@ public:
         CS_RETURN_IF(!(shadow.cols > 1 && shadow.rows > 1));
         mark();
         separate();
+        delimit();
 #if CS_DEBUG
         dump();
 #endif
@@ -206,6 +208,88 @@ protected:
                 }
             }
         }
+    }
+
+    void delimit()
+    {
+        for (int32_t i = 0, end = pils.imgs.size() - (kind == percent); i < end; )
+        {
+            if (pils.imgs[i].cols > opts.digit_max_width)
+            {
+                delimit(i);
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    }
+
+    static const int32_t invalid_delimiter = -1;
+
+    void delimit(int32_t img_idx)
+    {
+        const cv::Mat& img = pils.imgs[img_idx];
+        const isize_t delimiter = get_delimiter(img);
+        if (delimiter != invalid_delimiter)
+        {
+            WDT_IM_SHOW(pils.imgs[img_idx]);
+            CS_DUMP(delimiter);
+            const isize_t right_begin = delimiter + 1;
+            if (0 < delimiter && right_begin < img.cols)
+            {
+                pils.imgs.resize(pils.imgs.size() + 1);
+                for (int32_t i = pils.imgs.size() - 1, rend = img_idx + 1; rend < i; --i)
+                {
+                    pils.imgs[i] = pils.imgs[i-1];
+                }
+                img(Bound(right_begin, 0, img.cols - right_begin, img.rows)).copyTo(pils.imgs[img_idx + 1]);
+                cv::Mat tmp;
+                img(Bound(0, 0, delimiter, img.rows)).copyTo(tmp);
+                pils.imgs[img_idx] = tmp;
+            }
+        }
+    }
+
+    isize_t get_delimiter(const cv::Mat& img) const
+    {
+        isize_t begin = opts.digit_min_width - 1, end = std::min((opts.digit_max_width + 1) + 1, img.cols);
+        CS_DUMP(begin);
+        CS_DUMP(end);
+        CS_RETURN_IF(!(0 < begin && opts.digit_max_width < end && end - begin >= 3), -1);
+        typedef std::vector<isize_t> PixesList;
+        PixesList pixes_list(begin, img.rows);
+        pixes_list.reserve(end - begin);
+        for (isize_t col = begin; col < end; ++col)
+        {
+            pixes_list.push_back(col_pixes(img, col));
+        }
+
+        PixesList::iterator it = std::min_element(pixes_list.begin() + 1, pixes_list.end() - 1);
+        for (int32_t i = begin + 1; i < end - 1; ++i)
+        {
+            if (pixes_list[i] == *it)
+            {
+                if ((pixes_list[i] == 0)      // reliable
+                    || (pixes_list[i] == 1 && (pixes_list[i - 1] > 1 || pixes_list[i + 1] > 1))   // reasonable..
+                    || (pixes_list[i] < pixes_list[i - 1] || pixes_list[i] < pixes_list[i + 1])     // TODO: maybe..
+                    )
+                {
+                    return i;
+                }
+            }
+        }
+        return invalid_delimiter;
+    }
+
+    isize_t col_pixes(const cv::Mat& img, isize_t col) const
+    {
+        isize_t pixes = 0;
+        for (isize_t row = 0; row < img.rows; ++row)
+        {
+            pixes += (img.ptr<uint8_t>(row)[col] == fg);
+        }
+        return pixes;
     }
 
     void mark()
@@ -354,41 +438,37 @@ protected:
         Around around(*this);
         for (isize_t row = 1; row < shadow.rows; ++row)
         {
-            mark_t left_mark = calc_mark(row, 0);
             pix_t* px = px_ptr(row, 1);
             for (isize_t col = 1; col < shadow.cols; ++col, ++px)
             {
-                CS_PREFETCH(px, 1, 1);
+//                CS_PREFETCH(px, 1, 1);
                 if (*px == fg)
                 {
                     around.reset(row, col);
-                    mark_center_px(px, around, left_mark);
-                }
-                else
-                {
-                    left_mark = invalid_mark;
+                    mark_center_px(px, around);
                 }
             }
         }
     }
 
-    void mark_center_px(pix_t* px, const Around& a, mark_t& left_mark)
+    void mark_center_px(pix_t* px, const Around& a)
     {
+        mark_t mark_val;
         int32_t n_mark = a.mark_count();
         if (n_mark == 0)
         {
-            *px = left_mark = new_mark();
+            *px = mark_val = new_mark();
         }
         else if (n_mark == 1)
         {
-            *px = left_mark = a.which();
+            *px = mark_val = a.which();
         }
         else
         {
             bool found = false;
             if (a.l != invalid_mark)
             {
-                *px = left_mark = a.l;
+                *px = mark_val = a.l;
                 found = true;
             }
             if (a.tl != invalid_mark)
@@ -396,11 +476,11 @@ protected:
                 if (found)
                 {
 //                    CS_SAY("mark value (" << a.tl << "," << left_mark << ") are equialence.");
-                    record_equa(left_mark, a.tl);
+                    record_equa(mark_val, a.tl);
                 }
                 else
                 {
-                    *px = left_mark = a.tl;
+                    *px = mark_val = a.tl;
                     found = true;
                 }
             }
@@ -408,12 +488,12 @@ protected:
             {
                 if (found)
                 {
-//                    CS_SAY("mark value (" << a.t << "," << left_mark << ") are equialence.");
-                    record_equa(left_mark, a.t);
+                    CS_SAY("mark value (" << a.t << "," << mark_val << ") are equialence.");
+                    record_equa(mark_val, a.t);
                 }
                 else
                 {
-                    *px = left_mark = a.t;
+                    *px = mark_val = a.t;
                     found = true;
                 }
             }
@@ -422,11 +502,11 @@ protected:
                 if (found)
                 {
 //                    CS_SAY("mark value (" << a.tr << "," << left_mark << ") are equialence.");
-                    record_equa(left_mark, a.tr);
+                    record_equa(mark_val, a.tr);
                 }
                 else
                 {
-                    *px = left_mark = a.tr;
+                    *px = a.tr;
                 }
             }
         }

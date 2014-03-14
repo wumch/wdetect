@@ -71,27 +71,30 @@ protected:
         static const int32_t percent_max_parts = 3, invalid_widest_idx = -1;
         const int32_t percent_parts = std::min<int32_t>(pils.poses.size(), percent_max_parts);
         int32_t widest_idx = invalid_widest_idx;
-        isize_t widest = -1;
         const int32_t first_idx = pils.poses.size() - percent_parts;
-        for (int32_t i = pils.poses.size() - 1; i >= first_idx; --i)
         {
-            if (pils.imgs[i].cols > widest)
+            isize_t widest = -1;
+            for (int32_t i = pils.poses.size() - 1; i >= first_idx; --i)
             {
-                widest = pils.imgs[i].cols;
-                widest_idx = i;
+                if (pils.imgs[i].cols > widest)
+                {
+                    widest = pils.imgs[i].cols;
+                    widest_idx = i;
+                }
             }
+            CS_DUMP(widest_idx);
+            CS_DUMP(widest);
+            CS_RETURN_IF(widest_idx == invalid_widest_idx);
         }
-        CS_DUMP(widest_idx);
-        CS_DUMP(widest);
-        CS_RETURN_IF(widest_idx == invalid_widest_idx);
 
+        const isize_t pcircle_min_height = round(opts.digit_height * 0.6);
         const isize_t widest_left = pils.poses[widest_idx].x;
         const isize_t widest_right = widest_left + pils.imgs[widest_idx].cols;
 
         for (int32_t i = pils.poses.size() - 1; i >= first_idx; --i)
         {
-            if (i == widest || interact(widest_left, widest_right, i)
-                || pils.imgs[i].rows < opts.digit_height - 2)   // TODO: no hard-code
+            if (i == widest_idx || interact(widest_left, widest_right, i)
+                || pils.imgs[i].rows < pcircle_min_height)
             {
                 pils.pop_back();
                 CS_SAY("striped one for percent");
