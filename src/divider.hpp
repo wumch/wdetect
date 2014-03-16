@@ -115,22 +115,26 @@ protected:
     PositedImageList& pils;
 
     cv::Mat shadow;
-    EquaMap equa_map;
+//    EquaMap equa_map;
+
+    cv::Mat emap;
+
+    MarkList mark_map;
 
     mark_t last_mark;
-    MarkList marks;
+//    MarkList marks;
     Check check;
 
     const Config::BinaryColor fg;
     const Config::BinaryColor bg;
 
-    const isize_t col_idx_max, row_idx_max;
+    const isize_t col_idx_max;
 
 public:
     explicit Divider(const cv::Mat& img_, const OptsType& opts_, PositedImageList& res_)
         : img(img_), opts(opts_), pils(res_), last_mark(0),
           fg(Config::fg(opts.inverse)), bg(Config::bg(opts.inverse)),
-          col_idx_max(img.cols - 1), row_idx_max(img.rows - 1)
+          col_idx_max(img.cols - 1)
     {}
 
     void divide()
@@ -161,14 +165,15 @@ protected:
     {
         typedef std::vector<MarkPos> MarkPosList;
         MarkPosList poses;
-        poses.reserve(marks.size());
-        CS_DUMP(marks.size());
 
-        for (int32_t i = 0; i < marks.size(); ++i)
+        for (mark_t cur_mark = last_mark; cur_mark > invalid_mark; --cur_mark)
         {
-            PointList contour;
-            const mark_t cur_mark = marks[i];
+            if (mark_map[cur_mark] != invalid_mark)
+            {
+                continue;
+            }
             CS_DUMP(cur_mark);
+            PointList contour;
             for (isize_t row = 0; row < shadow.rows; ++row)
             {
                 pix_t* px = shadow.ptr<pix_t>(row);
@@ -227,26 +232,35 @@ protected:
 
     static const int32_t invalid_delimiter = -1;
 
-    void delimit(int32_t img_idx)
+    void delimit(const int32_t img_idx)
     {
-        const cv::Mat& img = pils.imgs[img_idx];
-        const isize_t delimiter = get_delimiter(img);
+        const isize_t delimiter = get_delimiter(pils.imgs[img_idx]);
         if (delimiter != invalid_delimiter)
         {
             WDT_IM_SHOW(pils.imgs[img_idx]);
             CS_DUMP(delimiter);
+
             const isize_t right_begin = delimiter + 1;
-            if (0 < delimiter && right_begin < img.cols)
+            if (0 < delimiter && right_begin < pils.imgs[img_idx].cols)
             {
                 pils.imgs.resize(pils.imgs.size() + 1);
                 for (int32_t i = pils.imgs.size() - 1, rend = img_idx + 1; rend < i; --i)
                 {
                     pils.imgs[i] = pils.imgs[i-1];
                 }
-                img(Bound(right_begin, 0, img.cols - right_begin, img.rows)).copyTo(pils.imgs[img_idx + 1]);
+                pils.poses.resize(pils.poses.size() + 1);
+                for (int32_t i = pils.poses.size() - 1, rend = img_idx + 1; rend < i; --i)
+                {
+                    pils.poses[i] = pils.poses[i-1];
+                }
+                pils.poses[img_idx + 1] = Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y);
+
+                pils.imgs[img_idx](Bound(right_begin, 0, pils.imgs[img_idx].cols - right_begin, pils.imgs[img_idx].rows)).copyTo(pils.imgs[img_idx + 1]);
                 cv::Mat tmp;
-                img(Bound(0, 0, delimiter, img.rows)).copyTo(tmp);
-                pils.imgs[img_idx] = tmp;
+                pils.imgs[img_idx](Bound(0, 0, delimiter, pils.imgs[img_idx].rows)).copyTo(tmp);
+                tmp.copyTo(pils.imgs[img_idx]);
+                WDT_IM_SHOW(pils.imgs[img_idx + 1]);
+                WDT_IM_SHOW(pils.imgs[img_idx]);
             }
         }
     }
@@ -297,15 +311,17 @@ protected:
         smark_top();
         smark_left();
         smark_center();
+#if CS_DEBUG
+        dump();
+#endif
         merge();
     }
 
     void merge()
     {
-        merge_equas();
+//        merge_equas();
 
-        MarkList map;
-        for (EquaMap::const_iterator it = equa_map.begin(); it != equa_map.end(); ++it)
+        /*for (EquaMap::const_iterator it = equa_map.begin(); it != equa_map.end(); ++it)
         {
             for (EquaList::const_iterator eit = it->second.begin(); eit != it->second.end(); ++eit)
             {
@@ -314,9 +330,11 @@ protected:
                     map.resize(*eit + 1, invalid_mark);
                 }
                 map[*eit] = it->first;
+                CS_SAY("[" << *eit << "," << it->first << "] are mapped");
             }
-        }
+        }*/
 
+        calc_map();
         for (isize_t row = 0; row < shadow.rows; ++row)
         {
             pix_t* px = shadow.ptr<pix_t>(row);
@@ -325,16 +343,16 @@ protected:
                 CS_PREFETCH(px, 1, 1);
                 if (*px != bg)
                 {
-                    if (map[*px] != invalid_mark)
+                    if (mark_map[*px] != invalid_mark)
                     {
-                        *px = map[*px];
+                        *px = mark_map[*px];
                     }
                 }
             }
         }
     }
 
-    void merge_equas()
+    /*void merge_equas()
     {
         for (EquaMap::iterator it = equa_map.begin(); it != equa_map.end(); ++it)
         {
@@ -346,7 +364,18 @@ protected:
                     {
                         if (*eit == it->first)
                         {
-                            CS_SAY("found " << it->first << " in equivalence-map of " << iit->first);
+                            iit->second.insert(it->second.begin(), it->second.end());
+                            check[it->first] = false;
+                            equa_map.erase(it);
+                            return merge_equas();
+                        }
+                    }
+                    for (EquaList::iterator eit = it->second.begin(); eit != it->second.end(); ++eit)
+                    {
+                        if (*eit == iit->first)
+                        {
+                            iit->second.insert(it->first);
+                            it->second.erase(eit);
                             iit->second.insert(it->second.begin(), it->second.end());
                             check[it->first] = false;
                             equa_map.erase(it);
@@ -364,7 +393,7 @@ protected:
                 marks.push_back(i);
             }
         }
-    }
+    }*/
 
     class Around
     {
@@ -397,7 +426,7 @@ protected:
             l = d.calc_mark(row, col - 1);
             tl = d.calc_mark(row - 1, col - 1);
             t = d.calc_mark(row - 1, col);
-            tr = col == d.col_idx_max ? invalid_mark : d.calc_mark(row - 1, col + 1);
+            tr = (col == d.col_idx_max ? invalid_mark : d.calc_mark(row - 1, col + 1));
         }
 
         void reset(isize_t row, isize_t col, mark_t left_mark)
@@ -405,7 +434,7 @@ protected:
             l = d.calc_mark(row, col - 1);
             tl = d.calc_mark(row - 1, col - 1);
             t = d.calc_mark(row - 1, col);
-            tr = col == d.col_idx_max ? invalid_mark : d.calc_mark(row - 1, col + 1);
+            tr = (col == d.col_idx_max ? invalid_mark : d.calc_mark(row - 1, col + 1));
         }
 
         int32_t mark_count() const
@@ -432,16 +461,19 @@ protected:
         }
     };
 
+#define _WDT_DUMP_PX(COL, ROW) CS_SAY("pixel (" << COL << "," << ROW << "): " << (int)*px_ptr(ROW, COL));
+
     // scan and mark center area.
     void smark_center()
     {
         Around around(*this);
+        _WDT_DUMP_PX(79, 11);
         for (isize_t row = 1; row < shadow.rows; ++row)
         {
             pix_t* px = px_ptr(row, 1);
             for (isize_t col = 1; col < shadow.cols; ++col, ++px)
             {
-//                CS_PREFETCH(px, 1, 1);
+                CS_PREFETCH(px, 1, 1);
                 if (*px == fg)
                 {
                     around.reset(row, col);
@@ -454,7 +486,7 @@ protected:
     void mark_center_px(pix_t* px, const Around& a)
     {
         mark_t mark_val;
-        int32_t n_mark = a.mark_count();
+        const int32_t n_mark = a.mark_count();
         if (n_mark == 0)
         {
             *px = mark_val = new_mark();
@@ -475,8 +507,8 @@ protected:
             {
                 if (found)
                 {
-//                    CS_SAY("mark value (" << a.tl << "," << left_mark << ") are equialence.");
                     record_equa(mark_val, a.tl);
+                    mark_val = a.tl;
                 }
                 else
                 {
@@ -488,8 +520,8 @@ protected:
             {
                 if (found)
                 {
-                    CS_SAY("mark value (" << a.t << "," << mark_val << ") are equialence.");
                     record_equa(mark_val, a.t);
+                    mark_val = a.t;
                 }
                 else
                 {
@@ -501,7 +533,6 @@ protected:
             {
                 if (found)
                 {
-//                    CS_SAY("mark value (" << a.tr << "," << left_mark << ") are equialence.");
                     record_equa(mark_val, a.tr);
                 }
                 else
@@ -527,7 +558,6 @@ protected:
                 *px = above_mark = t;
                 if (tr != bg && tr != t)
                 {
-//                    CS_SAY("mark value (" << tr << "," << t << ") at [" << 1 << "," << 0 << "] are equialence.");
                     record_equa(tr, t);
                 }
             }
@@ -605,11 +635,189 @@ protected:
     {
         if (a != b)
         {
-            record_equa_(a, b);
+            CS_SAY("recording (" << a << "," << b << ")");
+            if (a < b)
+            {
+                record_equa_(a, b);
+            }
+            else
+            {
+                record_equa_(b, a);
+            }
         }
     }
 
-    void record_equa_(mark_t a, mark_t b)
+    MarkList calc_map()
+    {
+        CS_DUMP(emap.cols);
+        CS_DUMP(emap.rows);
+        CS_DUMP(last_mark);
+        mark_map.resize(last_mark + 1, invalid_mark);
+        mark_t m;
+        for (mark_t mark = min_valid_mark; mark <= last_mark; ++mark)
+        {
+            m = calc_min_equa(mark);
+            if (m != mark)
+            {
+                mark_map[mark] = m;
+            }
+        }
+        return mark_map;
+    }
+
+    static const mark_t min_valid_mark = invalid_mark + 1;
+
+    mark_t calc_min_equa(mark_t mark) const
+    {
+        mark_t min = mark;
+        calc_min_equa_in_col(mark, invalid_mark, min);
+        return min;
+    }
+
+    void calc_min_equa_in_col(mark_t mark, mark_t skip, mark_t& min) const
+    {
+        CS_DUMP(mark);
+        CS_DUMP(min);
+        bool is_min = true;
+        for (mark_t row = min_valid_mark; row <= last_mark; ++row)
+        {
+            if (emap.ptr<uint8_t>(row)[mark])
+            {
+                is_min = false;
+                if (row < min)
+                {
+                    min = row;
+                }
+                CS_DUMP(row);
+                CS_DUMP(min);
+                if (row != skip)
+                {
+                    calc_min_equa_in_row(row, mark,  min);
+                }
+            }
+        }
+        if (is_min)
+        {
+            if (mark < min)
+            {
+                min = mark;
+            }
+        }
+    }
+
+    void calc_min_equa_in_row(mark_t mark, mark_t skip, mark_t& min) const
+    {
+        CS_DUMP(mark);
+        CS_DUMP(min);
+        bool is_min = true;
+        for (mark_t col = min_valid_mark; col <= last_mark; ++col)
+        {
+            if (emap.ptr<uint8_t>(mark)[col])
+            {
+                is_min = false;
+                if (col < min)
+                {
+                    min = col;
+                }
+                CS_DUMP(col);
+                CS_DUMP(min);
+                if (col != skip)
+                {
+                    calc_min_equa_in_col(col, mark, min);
+                }
+            }
+        }
+        if (is_min)
+        {
+            if (mark < min)
+            {
+                min = mark;
+            }
+        }
+    }
+
+    mark_t get_min_equa_(mark_t mark) const
+    {
+        mark_t parent = mark, prev = parent;
+        while (parent != invalid_mark)
+        {
+            prev = parent;
+            parent = parent_in_col(parent);
+            if (parent != invalid_mark)
+            {
+                prev = parent;
+                parent = parent_in_row(parent);
+            }
+        }
+        return prev;
+    }
+
+    MarkList get_min_equas() const
+    {
+        MarkList mark_list;
+        for (mark_t mark = invalid_mark + 1; mark <= last_mark; ++mark)
+        {
+            if (is_min_equa(mark))
+            {
+                mark_list.push_back(mark);
+            }
+        }
+        return mark_list;
+    }
+
+    bool is_min_equa(mark_t mark) const
+    {
+        return parent_in_col(mark) == invalid_mark;
+    }
+
+    mark_t parent_in_row(mark_t from) const
+    {
+        const uint8_t* signs = emap.ptr<uint8_t>(from);
+        for (int32_t col = 0; col < from; ++col)
+        {
+            if (signs[col])
+            {
+                return col;
+            }
+        }
+        return invalid_mark;
+    }
+
+    mark_t parent_in_col(mark_t from) const
+    {
+        for (int32_t row = 0; row < from; ++row)
+        {
+            if (emap.ptr<uint8_t>(row)[from])
+            {
+                return row;
+            }
+        }
+        return invalid_mark;
+    }
+
+    void record_equa_(mark_t to, mark_t from)
+    {
+        if (!(emap.cols > from))
+        {
+            if (emap.empty())
+            {
+                emap.create(from << 1, from << 1, CV_8UC1);
+                emap.setTo(static_cast<uint8_t>(false));
+            }
+            else
+            {
+                cv::Mat tmp;
+                emap.copyTo(tmp);
+                emap.create(from << 1, from << 1, CV_8UC1);
+                emap.setTo(static_cast<uint8_t>(false));
+                cv::Mat dest = emap(cv::Rect(0, 0, tmp.cols, tmp.rows));
+                tmp.copyTo(dest);
+            }
+        }
+        emap.ptr<uint8_t>(to)[from] = emap.ptr<uint8_t>(from)[to] = static_cast<uint8_t>(true);
+    }
+
+    /*void record_equa__(mark_t a, mark_t b)
     {
         mark_t key, val;
         if (a < b)
@@ -629,7 +837,7 @@ protected:
             it = equa_map.insert(std::make_pair(key, EquaList())).first;
         }
         it->second.insert(val);
-    }
+    }*/
 
     Bound bounding(const PointList& points) const
     {
@@ -703,7 +911,7 @@ protected:
             {
                 if (px[col] == bg)
                 {
-                    std::printf("  ");
+                    std::printf("%2s", px[col] == bg ? "_" : (px[col] == fg ? "." : "*"));
                 }
                 else
                 {
