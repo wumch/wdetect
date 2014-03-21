@@ -76,6 +76,8 @@ class Proxy
 public:
     static void prepare(wdt::Detecter* detecter, const zval* options, zval* return_value);
 
+    static void scale(wdt::Detecter* detecter, const double rate, zval* return_value);
+
     static void locate(wdt::Detecter* detecter, const zval* options, zval* return_value);
 
     static void set_origin(wdt::Detecter* detecter, wdt::isize_t left, wdt::isize_t top);
@@ -144,6 +146,8 @@ wdt::IntegerOpts Proxy::load_opts<wdt::IntegerOpts>(const zval* options)
         vline_min_gap, hline_min_gap,
         comma_max_width, comma_max_height,
         comma_min_area, comma_protrude,
+        dot_max_width, dot_max_height,
+        dot_min_area,
         left, top, right, bottom
     );
     return opts;
@@ -161,6 +165,8 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
         vline_min_gap, hline_min_gap,
+        comma_max_width, comma_max_height,
+        comma_min_area, comma_protrude,
         dot_max_width, dot_max_height,
         dot_min_area,
         percent_width,
@@ -208,6 +214,12 @@ void Proxy::prepare(wdt::Detecter* detecter, const zval* options, zval* return_v
     wdt::PrepareRes res;
     detecter->prepare(opts, res);
     form_retval(return_value, res);
+}
+
+void Proxy::scale(wdt::Detecter* detecter, const double rate, zval* return_value)
+{
+    detecter->scale(rate);
+    form_retval(return_value, true);
 }
 
 void Proxy::locate(wdt::Detecter* detecter, const zval* options, zval* return_value)

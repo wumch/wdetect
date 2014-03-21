@@ -22,6 +22,8 @@ public:
 
     void prepare(const PrepareOpts& opts, PrepareRes& res);
 
+    void scale(double rate);
+
     void locate(const ChartOpts& opts, ChartRes& res) const;
 
     void set_origin(isize_t left, isize_t top);

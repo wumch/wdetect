@@ -274,12 +274,17 @@ digit_t Recognizer::recognize(Sophist& sop) const
     else if (CS_BLIKELY(!contain_island(sop)))
     {
         detect_hline(sop);
+        CS_DUMP((int)sop.hline);
+        CS_DUMP((int)sop.hline_pos);
         if (sop.hline == 0)
         {
             detect_vline(sop);
+            CS_DUMP((int)sop.vline);
             if (sop.vline == 0)
             {
                 detect_circle(sop);
+                CS_DUMP((int)sop.circle);
+                CS_DUMP((int)sop.circle_pos);
                 if (sop.circle == 0)
                 {
                     return 3;
@@ -314,6 +319,7 @@ digit_t Recognizer::recognize(Sophist& sop) const
         else if (sop.hline == 1)
         {
             detect_vline(sop);
+            CS_DUMP((int)sop.vline);
             if (sop.vline == 0)
             {
                 if (sop.hline_pos == Sophist::bottom)
@@ -323,6 +329,31 @@ digit_t Recognizer::recognize(Sophist& sop) const
                 else if (sop.hline_pos == Sophist::top)     // 5,7
                 {
                     return recognize_5_and_7(sop);
+                }
+                else
+                {
+                    detect_circle(sop);
+                    if (sop.circle == 1)
+                    {
+                        switch (sop.circle_pos)
+                        {
+                        case Sophist::top:
+                            return 9;
+                            break;
+                        case Sophist::middle:
+                            return 0;
+                            break;
+                        case Sophist::bottom:
+                            return 6;
+                            break;
+                        case Sophist::unknown:
+                            break;
+                        }
+                    }
+                    else if (sop.circle == 2)
+                    {
+                        return 8;
+                    }
                 }
             }
             else if (sop.vline == 1)
@@ -338,6 +369,7 @@ digit_t Recognizer::recognize(Sophist& sop) const
             }
         }
     }
+    WDT_SHOW_IMG(sop.img);
     return Config::invalid_digit;
 }
 

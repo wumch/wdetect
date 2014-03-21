@@ -53,11 +53,7 @@ public:
             }
         }
 
-        if (digits.empty())
-        {
-            res.code = fo_no_match;
-        }
-        else if (!broken)
+        if (!broken)
         {
             res.percent += digits_to_num(digits) / std::pow(10, digits.size());
             res.code = success;

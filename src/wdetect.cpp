@@ -52,6 +52,7 @@ function_entry wdetecter_methods[] = {
     PHP_ME(WDetecter, __construct, NULL, ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
     PHP_ME(WDetecter, __destruct,  NULL, ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
     PHP_ME(WDetecter, prepare,     NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, scale,       NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, setOrigin,   NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, locate,      NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, detect,      NULL, ZEND_ACC_PUBLIC)
@@ -135,6 +136,25 @@ PHP_METHOD(WDetecter, prepare)
     }
 
     Proxy::prepare(detecter, options, return_value);
+}
+
+PHP_METHOD(WDetecter, scale)
+{
+    double rate;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d", &rate) == FAILURE)
+    {
+        php_error_docref(NULL TSRMLS_CC, E_ERROR, "<Wdetecter>.scale requires one arguments to be double.");
+        RETURN_FALSE;
+    }
+
+    wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(
+        zend_object_store_get_object(getThis() TSRMLS_CC))->dectecter;
+    if (detecter == NULL)
+    {
+        RETURN_FALSE;
+    }
+
+    Proxy::scale(detecter, rate, return_value);
 }
 
 PHP_METHOD(WDetecter, locate)

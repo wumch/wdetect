@@ -71,10 +71,10 @@ protected:
     num_t digits_to_num(const DigitList& digits) const
     {
         num_t result = 0;
-        for (int32_t i = 0; i < digits.size(); ++i)
+        for (DigitList::const_iterator it = digits.begin(); it != digits.end(); ++it)
         {
             // the Qin Jiushao Algorithm, created in Chinese Song Dynasty.
-            result = (result << 3) + (result << 1) + digits[i];
+            result = (result << 3) + (result << 1) + *it;
         }
         return result;
     }
@@ -101,36 +101,6 @@ protected:
         Divider<kind> divider(frag, opts, pils);
         divider.divide();
         pils.assemble();
-    }
-
-    void _devide(const cv::Mat& frag, BoundList& bounds) const
-    {
-        isize_t fg_begin = -1;
-        bool prev_is_fg = false;
-        for (isize_t col = 0; col < frag.cols; ++col)
-        {
-            if (separated(frag, col))
-            {
-                if (prev_is_fg)
-                {
-                    prev_is_fg = false;
-                    record_frag(frag, bounds, fg_begin, col);
-                }
-            }
-            else
-            {
-                if (!prev_is_fg)
-                {
-                    prev_is_fg = true;
-                    fg_begin = col;
-                }
-            }
-        }
-
-        for (BoundList::iterator it = bounds.begin(); it != bounds.end(); ++it)
-        {
-
-        }
     }
 
     void record_frag(const cv::Mat& frag, BoundList& bounds, isize_t left, isize_t right) const
@@ -164,11 +134,6 @@ protected:
                 break;
             }
         }
-    }
-
-    bool separated(const cv::Mat& frag, isize_t col, isize_t& left, isize_t& right) const
-    {
-
     }
 
     bool separated(const cv::Mat& frag, isize_t col) const
@@ -211,6 +176,7 @@ protected:
 
         if (CS_BUNLIKELY(pils.imgs.empty()))
         {
+            WDT_SHOW_IMG(img(bound));
             res.code = fo_no_match;
             return false;
         }

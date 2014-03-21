@@ -16,17 +16,22 @@
 
 #include "meta.hpp"
 
-#define WDT_NO_IM_DISPLAY 0
+#define WDT_NO_IM_DISPLAY 1
 
-#if CS_DEBUG && !WDT_NO_IM_DISPLAY
+#if CS_DEBUG
 #   include <opencv2/highgui/highgui.hpp>
-#   define WDT_IM_SHOW(img)                                         \
+#   define WDT_SHOW_IMG(img)                                         \
     do {                                                            \
         CS_SAY("show image: " << CS_STRINGIZE(img));                \
         cv::namedWindow(CS_STRINGIZE(img), CV_WINDOW_NORMAL);       \
         cv::imshow(CS_STRINGIZE(img), img);                         \
         cv::waitKey();                                              \
     } while (false)
+#else
+#   define WDT_SHOW_IMG(img)
+#endif
+#if !WDT_NO_IM_DISPLAY
+#   define WDT_IM_SHOW(img) WDT_SHOW_IMG(img)
 #else
 #   define WDT_IM_SHOW(img)
 #endif

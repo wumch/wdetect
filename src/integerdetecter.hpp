@@ -36,6 +36,7 @@ public:
             CS_DUMP(digit);
             if (CS_BUNLIKELY(digit == digit_dot || digit == invalid_digit))
             {
+                WDT_SHOW_IMG(*it);
                 res.code = fo_recognize;
                 broken = true;
                 break;
@@ -47,11 +48,7 @@ public:
         }
         CS_DUMP(digits.size());
 
-        if (digits.empty())
-        {
-            res.code = fo_no_match;
-        }
-        else if (!broken)
+        if (!broken)
         {
             res.num = digits_to_num(digits);
             res.code = success;

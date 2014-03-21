@@ -106,7 +106,6 @@ protected:
     typedef std::set<mark_t> EquaList;
     typedef std::tr1::unordered_map<mark_t, EquaList> EquaMap;
     typedef std::vector<mark_t> MarkList;
-    typedef boost::dynamic_bitset<uint64_t> Check;
 
     static const mark_t invalid_mark = 0;
 
@@ -115,15 +114,12 @@ protected:
     PositedImageList& pils;
 
     cv::Mat shadow;
-//    EquaMap equa_map;
 
     cv::Mat emap;
 
     MarkList mark_map;
 
     mark_t last_mark;
-//    MarkList marks;
-    Check check;
 
     const Config::BinaryColor fg;
     const Config::BinaryColor bg;
@@ -172,7 +168,6 @@ protected:
             {
                 continue;
             }
-            CS_DUMP(cur_mark);
             PointList contour;
             for (isize_t row = 0; row < shadow.rows; ++row)
             {
@@ -186,11 +181,9 @@ protected:
                 }
             }
 
-            CS_DUMP(contour.size());
             if (contour.size())
             {
-                Bound box = cv::boundingRect(contour);
-                poses.push_back(std::make_pair(cur_mark, box));
+                poses.push_back(std::make_pair(cur_mark, cv::boundingRect(contour)));
             }
         }
 
@@ -207,9 +200,9 @@ protected:
             {
                 const pix_t* px = mask.ptr<pix_t>(row);
                 pix_t* res_px = res_img.ptr<pix_t>(row);
-                for (const pix_t* const end = px + mask.cols; px != end; ++px)
+                for (const pix_t* const end = px + mask.cols; px != end; ++px, ++res_px)
                 {
-                    *res_px++ = (*px == cur_mark) ? fg : bg;
+                    *res_px = (*px == cur_mark) ? fg : bg;
                 }
             }
         }
@@ -243,22 +236,18 @@ protected:
             const isize_t right_begin = delimiter + 1;
             if (0 < delimiter && right_begin < pils.imgs[img_idx].cols)
             {
-                pils.imgs.resize(pils.imgs.size() + 1);
-                for (int32_t i = pils.imgs.size() - 1, rend = img_idx + 1; rend < i; --i)
                 {
-                    pils.imgs[i] = pils.imgs[i-1];
+                    cv::Mat tmp;
+                    pils.imgs[img_idx](Bound(right_begin, 0, pils.imgs[img_idx].cols - right_begin, pils.imgs[img_idx].rows)).copyTo(tmp);
+                    pils.imgs.insert(pils.imgs.begin() + img_idx + 1, tmp);
                 }
-                pils.poses.resize(pils.poses.size() + 1);
-                for (int32_t i = pils.poses.size() - 1, rend = img_idx + 1; rend < i; --i)
                 {
-                    pils.poses[i] = pils.poses[i-1];
+                    cv::Mat tmp;
+                    pils.imgs[img_idx](Bound(0, 0, delimiter, pils.imgs[img_idx].rows)).copyTo(tmp);
+                    pils.imgs[img_idx] = tmp;
                 }
-                pils.poses[img_idx + 1] = Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y);
 
-                pils.imgs[img_idx](Bound(right_begin, 0, pils.imgs[img_idx].cols - right_begin, pils.imgs[img_idx].rows)).copyTo(pils.imgs[img_idx + 1]);
-                cv::Mat tmp;
-                pils.imgs[img_idx](Bound(0, 0, delimiter, pils.imgs[img_idx].rows)).copyTo(tmp);
-                tmp.copyTo(pils.imgs[img_idx]);
+                pils.poses.insert(pils.poses.begin() + img_idx + 1, Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y));
                 WDT_IM_SHOW(pils.imgs[img_idx + 1]);
                 WDT_IM_SHOW(pils.imgs[img_idx]);
             }
@@ -311,29 +300,11 @@ protected:
         smark_top();
         smark_left();
         smark_center();
-#if CS_DEBUG
-        dump();
-#endif
         merge();
     }
 
     void merge()
     {
-//        merge_equas();
-
-        /*for (EquaMap::const_iterator it = equa_map.begin(); it != equa_map.end(); ++it)
-        {
-            for (EquaList::const_iterator eit = it->second.begin(); eit != it->second.end(); ++eit)
-            {
-                if (!(*eit < map.size()))
-                {
-                    map.resize(*eit + 1, invalid_mark);
-                }
-                map[*eit] = it->first;
-                CS_SAY("[" << *eit << "," << it->first << "] are mapped");
-            }
-        }*/
-
         calc_map();
         for (isize_t row = 0; row < shadow.rows; ++row)
         {
@@ -351,49 +322,6 @@ protected:
             }
         }
     }
-
-    /*void merge_equas()
-    {
-        for (EquaMap::iterator it = equa_map.begin(); it != equa_map.end(); ++it)
-        {
-            for (EquaMap::iterator iit = equa_map.begin(); iit != equa_map.end(); ++iit)
-            {
-                if (it != iit)
-                {
-                    for (EquaList::const_iterator eit = iit->second.begin(); eit != iit->second.end(); ++eit)
-                    {
-                        if (*eit == it->first)
-                        {
-                            iit->second.insert(it->second.begin(), it->second.end());
-                            check[it->first] = false;
-                            equa_map.erase(it);
-                            return merge_equas();
-                        }
-                    }
-                    for (EquaList::iterator eit = it->second.begin(); eit != it->second.end(); ++eit)
-                    {
-                        if (*eit == iit->first)
-                        {
-                            iit->second.insert(it->first);
-                            it->second.erase(eit);
-                            iit->second.insert(it->second.begin(), it->second.end());
-                            check[it->first] = false;
-                            equa_map.erase(it);
-                            return merge_equas();
-                        }
-                    }
-                }
-            }
-        }
-
-        for (size_t i = 0; i < check.size(); ++i)
-        {
-            if (check[i])
-            {
-                marks.push_back(i);
-            }
-        }
-    }*/
 
     class Around
     {
@@ -676,8 +604,6 @@ protected:
 
     void calc_min_equa_in_col(mark_t mark, mark_t skip, mark_t& min) const
     {
-        CS_DUMP(mark);
-        CS_DUMP(min);
         bool is_min = true;
         for (mark_t row = min_valid_mark; row <= last_mark; ++row)
         {
@@ -688,8 +614,6 @@ protected:
                 {
                     min = row;
                 }
-                CS_DUMP(row);
-                CS_DUMP(min);
                 if (row != skip)
                 {
                     calc_min_equa_in_row(row, mark,  min);
@@ -707,8 +631,6 @@ protected:
 
     void calc_min_equa_in_row(mark_t mark, mark_t skip, mark_t& min) const
     {
-        CS_DUMP(mark);
-        CS_DUMP(min);
         bool is_min = true;
         for (mark_t col = min_valid_mark; col <= last_mark; ++col)
         {
@@ -719,8 +641,6 @@ protected:
                 {
                     min = col;
                 }
-                CS_DUMP(col);
-                CS_DUMP(min);
                 if (col != skip)
                 {
                     calc_min_equa_in_col(col, mark, min);
@@ -817,28 +737,6 @@ protected:
         emap.ptr<uint8_t>(to)[from] = emap.ptr<uint8_t>(from)[to] = static_cast<uint8_t>(true);
     }
 
-    /*void record_equa__(mark_t a, mark_t b)
-    {
-        mark_t key, val;
-        if (a < b)
-        {
-            key = a;
-            val = b;
-        }
-        else
-        {
-            key = b;
-            val = a;
-        }
-        check[val] = false;
-        EquaMap::iterator it = equa_map.find(key);
-        if (it == equa_map.end())
-        {
-            it = equa_map.insert(std::make_pair(key, EquaList())).first;
-        }
-        it->second.insert(val);
-    }*/
-
     Bound bounding(const PointList& points) const
     {
         isize_t left = shadow.cols, top = shadow.rows, right = 0, bottom = 0;
@@ -871,11 +769,6 @@ protected:
         {
             ++last_mark;
         }
-        if (!(last_mark < check.size()))
-        {
-            check.resize(last_mark + 1, false);
-        }
-        check[last_mark] = true;
         return last_mark;
     }
 
@@ -898,7 +791,6 @@ protected:
     {
         return shadow.ptr<pix_t>(row) + col;
     }
-
 
 #if CS_DEBUG
     void dump()

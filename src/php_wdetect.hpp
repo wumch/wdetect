@@ -77,6 +77,7 @@ PHP_MINFO_FUNCTION(wdetect);
 PHP_METHOD(WDetecter, __construct);
 PHP_METHOD(WDetecter, __destruct);
 PHP_METHOD(WDetecter, prepare);
+PHP_METHOD(WDetecter, scale);
 PHP_METHOD(WDetecter, locate);
 PHP_METHOD(WDetecter, setOrigin);
 PHP_METHOD(WDetecter, detect);

@@ -33,17 +33,29 @@ void Locater::locate()
         }
     }
 
+    bool detected = false;
+    Bound box;
     for (BoundList::const_iterator it = bounds.begin(); it != bounds.end(); ++it)
     {
         if (valid(*it))
         {
             if (detect(*it))
             {
-                return;
+                detected = true;
+                box = *it;
+                break;
             }
         }
     }
-    res.code = fo_no_match;
+
+    if (detected)
+    {
+
+    }
+    else
+    {
+        res.code = fo_no_match;
+    }
 }
 
 bool Locater::detect(const Bound& chart_bound)
@@ -60,50 +72,50 @@ bool Locater::detect(const Bound& chart_bound)
 
     isize_t rope, prev_rope;
     isize_t continuous_equal = 0;
-    static const int32_t invalid_gradient_sign = -2;
-    int32_t gradient_sign = invalid_gradient_sign; // 斜率符号（-1/0/1有效, -2无效)
+    enum gradient_sign { negative = -1, zero_or_pending = 0, positive = 1, invalid = -2};
+    int32_t gradient_sign = invalid; // 斜率符号（-1/0/1有效, -2无效)
     for (isize_t row = 0; row < chart.rows; ++row)
     {
         if (length(chart.ptr<uchar>(row), chart.cols, rope))
         {
             if (!prev_valid)
             {
-                if (first_echelon_y == -1)
+                if (first_echelon_y == negative)
                 {
                     first_echelon_y = row;
                 }
                 CS_SAY("new echelon begans at [" << row << "]");
                 prev_valid = true;
                 continuous_equal = 0;
-                gradient_sign = invalid_gradient_sign;
+                gradient_sign = invalid;
                 echelons.push_back(RopeList());
                 echelon = echelons.rbegin();
             }
             else
             {
-                if (gradient_sign == invalid_gradient_sign)
+                if (gradient_sign == invalid)
                 {
                     if (rope > prev_rope)
                     {
-                        gradient_sign = -1;
+                        gradient_sign = negative;
                     }
                     else if (rope < prev_rope)
                     {
-                        gradient_sign = 1;
+                        gradient_sign = positive;
                     }
                     else
                     {
                         if (++continuous_equal > 3)
                         {
-                            gradient_sign = 0;
+                            gradient_sign = zero_or_pending;
                         }
                     }
                 }
                 else
                 {
-                    if (!((rope >= prev_rope && gradient_sign == -1)
-                        || (rope <= prev_rope && gradient_sign == 1)
-                        || (rope == prev_rope && gradient_sign == 0)))
+                    if (!((rope >= prev_rope && gradient_sign == negative)
+                        || (rope <= prev_rope && gradient_sign == positive)
+                        || (rope == prev_rope && gradient_sign == zero_or_pending)))
                     {
                         return false;
                     }
@@ -145,10 +157,7 @@ bool Locater::detect(const Bound& chart_bound)
         CS_STDOUT << std::endl;
     }
 #endif
-    if (echelons.empty() || echelons.size() > opts.echelons)
-    {
-        return false;
-    }
+    CS_RETURN_IF(echelons.empty() || echelons.size() > opts.echelons, false);
     res.left = chart_bound.x;
     res.top = first_echelon_y + chart_bound.y;
 

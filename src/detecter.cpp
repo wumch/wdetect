@@ -1,5 +1,6 @@
 
 #include "detecter.hpp"
+#include <cmath>
 #include "preprocer.hpp"
 #include "locater.hpp"
 #include "integerdetecter.hpp"
@@ -17,6 +18,16 @@ void Detecter::set_origin(isize_t left_, isize_t top_)
     left = left_;
     top = top_;
     offsets = !(left == 0 && top == 0);
+}
+
+void Detecter::scale(double rate)
+{
+    if (rate != 1.0)
+    {
+        cv::Mat scaled;
+        cv::resize(img, scaled, cv::Size2i(round(img.cols * rate), round(img.rows * rate)), 0, 0, CV_INTER_LINEAR);
+        img = scaled;
+    }
 }
 
 void Detecter::prepare(const PrepareOpts& opts, PrepareRes& res)
