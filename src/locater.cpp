@@ -41,21 +41,85 @@ void Locater::locate()
         {
             if (detect(*it))
             {
-                detected = true;
-                box = *it;
-                break;
+                if (detected)
+                {
+                    if (it->y < box.y)
+                    {
+                        box = *it;
+                    }
+                }
+                else
+                {
+                    detected = true;
+                    box = *it;
+                }
             }
         }
     }
 
     if (detected)
     {
-
+        calc_width(box);
     }
     else
     {
         res.code = fo_no_match;
     }
+}
+
+void Locater::calc_width(const Bound& box)
+{
+    static const int32_t min_continuous_fg_cols = 4;
+    isize_t top = box.y, bottom = box.y + box.height;
+    CS_DUMP(top);
+    CS_DUMP(bottom);
+    CS_DUMP(box.x);
+    CS_DUMP(box.width);
+    int32_t fg_cols = 0;
+    bool found = false;
+    for (isize_t right = box.x + box.width,
+            col = right + opts.chart_min_margin_right,
+            end = std::min(right + opts.chart_max_margin_right + min_continuous_fg_cols, img.cols);
+        col < end; ++col)
+    {
+        if (is_margin(col, top, bottom))
+        {
+            if (fg_cols)
+            {
+                fg_cols = 0;
+            }
+        }
+        else
+        {
+            CS_DUMP(fg_cols);
+            if (++fg_cols >= min_continuous_fg_cols)
+            {
+                found = true;
+                res.chart_width = col - fg_cols - box.x;
+                break;
+            }
+        }
+    }
+    if (!found)
+    {
+        res.code = fo_calc_chart_width;
+    }
+}
+
+bool Locater::is_margin(isize_t col, isize_t top, isize_t bottom) const
+{
+    int32_t fgs = 0;
+    for (isize_t row = top; row < bottom; ++row)
+    {
+        if (CS_BUNLIKELY(is_fg(img.ptr<uint8_t>(row)[col])))
+        {
+            if (++fgs > opts.chart_margin_max_fg)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool Locater::detect(const Bound& chart_bound)
@@ -258,7 +322,7 @@ bool Locater::valid(const Bound& bound) const
 
 bool Locater::is_fg(int32_t color) const
 {
-    return color == Config::black;
+    return color == fg;
 }
 
 }

@@ -59,6 +59,8 @@ typedef enum {
     fo_no_match   = 9,    // 没有检测到梯形
     fo_detect      = 10,    // 文字信息检测失败(具体错误看数据)
     fo_recognize      = 11,    // 文字信息检测失败(具体错误看数据)
+
+    fo_calc_chart_width = 12,   // 计算图表宽度失败
 } ResultCode;
 
 // to resident into php array, it's better to be an ordered map.
@@ -88,6 +90,7 @@ public:
 class ChartRes: public LocateRes
 {
 public:
+    isize_t chart_width;
     RateList rates;
 };
 
@@ -142,6 +145,8 @@ public:
         chart_min_height, chart_max_height;
     int32_t echelons;    // 梯形最大数量
     isize_t echelon_padding_left;    // 梯形左补白
+    isize_t chart_min_margin_right, chart_max_margin_right;
+    int32_t chart_margin_max_fg;
 };
 
 // detect-inside-bound options

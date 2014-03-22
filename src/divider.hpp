@@ -67,9 +67,9 @@ protected:
     {
     public:
         YPairCmper() {}
-        bool operator()(const YCount::iterator& left, const YCount::iterator& right) const
+        bool operator()(const YCount::value_type& left, const YCount::value_type& right) const
         {
-            return right->second < left->second;
+            return right.second < left.second;
         }
     } y_pair_cmper;
 

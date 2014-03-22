@@ -127,7 +127,9 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
         x_err, y_err, inverse,
         chart_min_width, chart_max_width,
         chart_min_height, chart_max_height,
-        echelons, echelon_padding_left
+        echelons, echelon_padding_left,
+        chart_min_margin_right, chart_max_margin_right,
+        chart_margin_max_fg
     );
     return opts;
 }
@@ -282,6 +284,7 @@ void Proxy::form_retval(zval* return_value, const wdt::ChartRes& res)
         add_next_index_long(array, res.top);
         add_next_index_zval(return_value, array);
     }
+    add_next_index_long(return_value, res.chart_width);
 }
 
 void Proxy::init_retval(zval* return_value, wdt::ResultCode code, wdt::rate_t rate)
