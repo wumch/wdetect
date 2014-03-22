@@ -29,6 +29,7 @@ class Detecter
         \WDetecter::ERR_NO_MATCH => '找不到符合条件的图像',
         \WDetecter::ERR_DETECT_FAILED => '探测失败',
         \WDetecter::ERR_RECOGNIZE_FAILED => '识别失败',
+        \WDetecter::ERR_CALC_CHART_WIDTH => '计算图表宽度失败',
     );
 
     /**
@@ -48,16 +49,11 @@ class Detecter
     {
         $prepareOpts = (array)(new PrepareOpts);
         $prepareOpts['img_file'] = $imgFile;
-        $this->printr($prepareOpts);
         $prepareRes = $this->wdter->prepare($prepareOpts);
-        $this->printr($prepareRes);
-        if ($prepareRes[0] === \WDetecter::OK)
+        if (isset($prepareRes[0]) and $prepareRes[0] === \WDetecter::OK)
         {
             $chartOpts = (array)(new Chart);
-            $this->printr($chartOpts);
             $locateRes = $this->wdter->locate($chartOpts);
-            $this->printr($locateRes);
-            echo str_repeat('-', 40), PHP_EOL;
             if ($locateRes[0] === \WDetecter::OK)
             {
                 $optClasses = array(
@@ -68,28 +64,43 @@ class Detecter
                     'Share', 'ShareTimes',
                 );
                 list($x0, $y0) = $locateRes[2];
+                $charWidth = $locateRes[3];
                 foreach ($optClasses as &$optClass)
                 {
                     $this->{'detect' . $optClass}($x0, $y0);
                 }
             }
-        }
-    }
-
-    protected function detect(array $opts)
-    {
-        $this->println('opts:');
-        $this->printr($opts);
-        $res = $this->wdter->detect($opts);
-        $this->printr($res);
-        $code = array_shift($res);
-        if ($code === \WDetecter::OK)
-        {
-            return $res;
+            else
+            {
+                $this->println('failed on locating: ' . static::$errors[$locateRes[0]] . PHP_EOL . 'params:');
+                $this->printr($chartOpts);
+                echo str_repeat('-', 40), PHP_EOL;
+            }
         }
         else
         {
-            $this->println(static::$errors[$code]);
+            $this->println('failed on preparing: ' . static::$errors[$prepareRes[0]] . PHP_EOL . 'params:');
+            $this->printr($prepareOpts);
+        }
+    }
+
+    protected function detect(array $opts, $kind = '')
+    {
+        $kindInfo = explode('\\', $kind);
+        $kind = end($kindInfo);
+        $res = $this->wdter->detect($opts);
+        $code = array_shift($res);
+        if ($code === \WDetecter::OK)
+        {
+            $this->println('detected ' . $kind . ': ' . json_encode($res));
+            return true;
+        }
+        else
+        {
+            $this->println('failed on detecting ' . $kind . ': ' . static::$errors[$code]);
+            $this->println('params:');
+            $this->printr($opts);
+            echo str_repeat('-', 40), PHP_EOL;
             return false;
         }
     }
@@ -121,7 +132,7 @@ class Detecter
                 }
                 if ($opts !== null)
                 {
-                    return $this->detect((array)$opts);
+                    return $this->detect((array)$opts, $optClass);
                 }
             }
         }
@@ -167,28 +178,28 @@ class PrepareOpts extends Options
     public $img_max_height = 1280;
 }
 
-class LocateOpts extends Options
+class DetectOpts extends Options
 {
     public $type;
+    public $x_err = 1, $y_err = 1;
+    public $inverse = false;
 }
+
+class LocateOpts extends DetectOpts
+{}
 
 // 中间左边漏斗图
 class Chart extends LocateOpts
 {
     public $type = \WDetecter::CMD_LOCATE_CHART;
     public $chart_min_width = 130;
-    public $chart_max_width = 170;
+    public $chart_max_width = 184;
     public $chart_min_height = 32;
     public $chart_max_height = 132;
     public $echelons = 3;
     public $echelon_padding_left = 0;
-}
-
-class DetectOpts extends Options
-{
-    public $type;
-    public $x_err = 1, $y_err = 1;
-    public $inverse = false;
+    public $chart_min_margin_right = 12, $chart_max_margin_right = 38;
+    public $chart_margin_max_fg = 2;
 }
 
 class DIBOpts extends DetectOpts
@@ -229,28 +240,31 @@ class NumOpts extends DIBOpts
     public $vline_adj = 0, $hline_adj = 0;
     public $vline_max_break = 0, $hline_max_break = 0;
     public $vline_min_gap = 2, $hline_min_gap = 2;
+
+    public $comma_max_width = 3, $comma_max_height = 4,
+           $comma_min_area = 3, $comma_protrude = 2;
+
+    public $dot_max_width = 2, $dot_max_height = 2,
+           $dot_min_area = 2;
 }
 
 class IntegerOpts extends NumOpts
 {
     public $type = \WDetecter::CMD_DETECT_INTEGER;
-    public $comma_max_width = 3, $comma_max_height = 4,
-           $comma_min_area = 3, $comma_protrude = 2;
 }
 
 class PercentOpts extends NumOpts
 {
     public $type = \WDetecter::CMD_DETECT_PERCENT;
     public $percent_width = 11;
-    public $dot_max_width = 2, $dot_max_height = 2,
-           $dot_min_area = 2;
 }
 
 class ROCOpts extends IntegerOpts
 {
     protected $padding = 2;
     protected $width = 48;
-    protected $vgap = 38;
+    protected $vgap_min = 33;
+    protected $vgap_max = 38;
     protected $turn = 0;
     protected $baseTop = 3;
 
@@ -259,8 +273,8 @@ class ROCOpts extends IntegerOpts
     public function __construct($x0 = 0, $y0 = 0)
     {
         $this->left = $this->right - $this->width;
-        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap;
-        $this->bottom = $this->top + $this->digit_height + $this->comma_protrude;
+        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap_min;
+        $this->bottom = $this->baseTop + ($this->turn - 1) * $this->vgap_max + $this->digit_height + $this->comma_protrude;
         $this->setPadding($this->padding);
         $this->adjust($x0, $y0);
     }
@@ -419,7 +433,7 @@ class ShareTimes extends IntegerOpts
 
 if ($GLOBALS['argc'])
 {
-    $imgFile = $GLOBALS['argc'] > 1 ? $GLOBALS['argv'][1] : "/data/fsuggest/wdetect.forgiven/data/1.jpg";
+    $imgFile = $GLOBALS['argc'] > 1 ? $GLOBALS['argv'][1] : "/data/fsuggest/wdetect.forgiven/data/16.jpg";
     $detecter = new Detecter(true);
     $detecter->check();
     $detecter->detectAll($imgFile);
