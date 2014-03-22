@@ -6,12 +6,9 @@
 #   include <cstdio>
 #endif
 #include <vector>
-#include <set>
 #include <algorithm>
 #include <utility>
-#include <tr1/unordered_map>
 #include <boost/static_assert.hpp>
-#include <boost/dynamic_bitset.hpp>
 #include "cvdef.hpp"
 #include "facade.hpp"
 
@@ -65,10 +62,20 @@ protected:
         return points;
     }
 
+    typedef std::map<isize_t, int32_t> YCount;
+    static const class YPairCmper
+    {
+    public:
+        YPairCmper() {}
+        bool operator()(const YCount::iterator& left, const YCount::iterator& right) const
+        {
+            return right->second < left->second;
+        }
+    } y_pair_cmper;
+
     isize_t calc_y_mode() const
     {
         CS_RETURN_IF(poses.empty(), Config::invalid_y_mode);
-        typedef std::map<isize_t, int32_t> YCount;
         YCount ycount;
         for (PointList::const_iterator it = poses.begin(); it != poses.end(); ++it)
         {
@@ -82,17 +89,7 @@ protected:
                 ++yit->second;
             }
         }
-        static const class YPairCmper
-        {
-        public:
-            YPairCmper() {}
-            bool operator()(const YCount::iterator& left, const YCount::iterator& right) const
-            {
-                return right->second < left->second;
-            }
-        } y_pair_cmper;
-
-        return std::max(ycount.begin(), ycount.end(), y_pair_cmper)->first;
+        return std::max_element(ycount.begin(), ycount.end(), y_pair_cmper)->first;
     }
 };
 
@@ -103,8 +100,6 @@ protected:
     typedef typename NumDetecterTraits<kind>::OptsType OptsType;
     typedef int32_t mark_t;
     BOOST_STATIC_ASSERT(sizeof(mark_t) >= sizeof(pix_t));
-    typedef std::set<mark_t> EquaList;
-    typedef std::tr1::unordered_map<mark_t, EquaList> EquaMap;
     typedef std::vector<mark_t> MarkList;
 
     static const mark_t invalid_mark = 0;
@@ -119,8 +114,8 @@ protected:
 
     MarkList mark_map;
 
+    // NOTE: the only way to examine whether a `pixel` should be ignored or not is `pixel == bg`.
     mark_t last_mark;
-
     const Config::BinaryColor fg;
     const Config::BinaryColor bg;
 
@@ -135,14 +130,16 @@ public:
 
     void divide()
     {
-        img.copyTo(shadow);
-        CS_RETURN_IF(!(shadow.cols > 1 && shadow.rows > 1));
-        mark();
-        separate();
-        delimit();
+        if (CS_BLIKELY(img.cols > 1 && img.rows > 1))
+        {
+            img.copyTo(shadow);
+            mark();
+            separate();
+            delimit();
 #if CS_DEBUG
-        dump();
+            dump();
 #endif
+        }
     }
 
 protected:
