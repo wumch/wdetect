@@ -368,6 +368,16 @@ digit_t Recognizer::recognize(Sophist& sop) const
                 }
             }
         }
+        else if (sop.hline == 2)
+        {
+            if (sop.hline_pos == Sophist::top)
+            {
+                if (recognize_5_and_7(sop) == 5)
+                {
+                    return 5;
+                }
+            }
+        }
     }
     WDT_SHOW_IMG(sop.img);
     return Config::invalid_digit;

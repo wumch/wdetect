@@ -69,7 +69,7 @@ protected:
         YPairCmper() {}
         bool operator()(const YCount::value_type& left, const YCount::value_type& right) const
         {
-            return right.second < left.second;
+            return left.second < right.second;
         }
     } y_pair_cmper;
 
@@ -595,25 +595,28 @@ protected:
     mark_t calc_min_equa(mark_t mark) const
     {
         mark_t min = mark;
-        calc_min_equa_in_col(mark, invalid_mark, min);
+        calc_min_equa_in_col(mark, invalid_mark, invalid_mark, min);
         return min;
     }
 
-    void calc_min_equa_in_col(mark_t mark, mark_t skip, mark_t& min) const
+    void calc_min_equa_in_col(mark_t mark, mark_t skip, mark_t skip_prev, mark_t& min) const
     {
         bool is_min = true;
         for (mark_t row = min_valid_mark; row <= last_mark; ++row)
         {
-            if (emap.ptr<uint8_t>(row)[mark])
+            if (row < emap.rows)
             {
-                is_min = false;
-                if (row < min)
+                if (emap.ptr<uint8_t>(row)[mark])
                 {
-                    min = row;
-                }
-                if (row != skip)
-                {
-                    calc_min_equa_in_row(row, mark,  min);
+                    is_min = false;
+                    if (row < min)
+                    {
+                        min = row;
+                    }
+                    if (row != skip && row != skip_prev)
+                    {
+                        calc_min_equa_in_row(row, mark, skip, min);
+                    }
                 }
             }
         }
@@ -626,21 +629,24 @@ protected:
         }
     }
 
-    void calc_min_equa_in_row(mark_t mark, mark_t skip, mark_t& min) const
+    void calc_min_equa_in_row(mark_t mark, mark_t skip, mark_t skip_prev, mark_t& min) const
     {
         bool is_min = true;
         for (mark_t col = min_valid_mark; col <= last_mark; ++col)
         {
-            if (emap.ptr<uint8_t>(mark)[col])
+            if (col < emap.cols)
             {
-                is_min = false;
-                if (col < min)
+                if (emap.ptr<uint8_t>(mark)[col])
                 {
-                    min = col;
-                }
-                if (col != skip)
-                {
-                    calc_min_equa_in_col(col, mark, min);
+                    is_min = false;
+                    if (col < min)
+                    {
+                        min = col;
+                    }
+                    if (col != skip && col != skip_prev)
+                    {
+                        calc_min_equa_in_col(col, mark, skip, min);
+                    }
                 }
             }
         }

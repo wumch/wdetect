@@ -79,9 +79,10 @@ void Locater::calc_width(const Bound& box)
     bool found = false;
     for (isize_t right = box.x + box.width,
             col = right + opts.chart_min_margin_right,
-            end = std::min(right + opts.chart_max_margin_right + min_continuous_fg_cols, img.cols);
+            end = std::min(right + opts.chart_max_margin_right + min_continuous_fg_cols + 2, img.cols);
         col < end; ++col)
     {
+        CS_DUMP(col);
         if (is_margin(col, top, bottom))
         {
             if (fg_cols)
@@ -136,8 +137,10 @@ bool Locater::detect(const Bound& chart_bound)
 
     isize_t rope, prev_rope;
     isize_t continuous_equal = 0;
+    isize_t gradient_conform = 0;
     enum gradient_sign { negative = -1, zero_or_pending = 0, positive = 1, invalid = -2};
-    int32_t gradient_sign = invalid; // 斜率符号（-1/0/1有效, -2无效)
+    gradient_sign gradient_sign = invalid, gradient_sign_prob = invalid; // 斜率符号（-1/0/1有效, -2无效)
+    int32_t wrong_row = 0;
     for (isize_t row = 0; row < chart.rows; ++row)
     {
         if (length(chart.ptr<uchar>(row), chart.cols, rope))
@@ -148,10 +151,10 @@ bool Locater::detect(const Bound& chart_bound)
                 {
                     first_echelon_y = row;
                 }
-                CS_SAY("new echelon begans at [" << row << "]");
+                CS_SAY("new echelon began at [" << row << "]");
                 prev_valid = true;
                 continuous_equal = 0;
-                gradient_sign = invalid;
+                gradient_sign_prob = invalid;
                 echelons.push_back(RopeList());
                 echelon = echelons.rbegin();
             }
@@ -161,27 +164,59 @@ bool Locater::detect(const Bound& chart_bound)
                 {
                     if (rope > prev_rope)
                     {
-                        gradient_sign = negative;
+                        if (gradient_sign_prob == negative)
+                        {
+                            ++gradient_conform;
+                        }
+                        else
+                        {
+                            gradient_sign_prob = negative;
+                            gradient_conform = 1;
+                        }
                     }
                     else if (rope < prev_rope)
                     {
-                        gradient_sign = positive;
+                        if (gradient_sign_prob == positive)
+                        {
+                            ++gradient_conform;
+                        }
+                        else
+                        {
+                            gradient_sign_prob = positive;
+                            gradient_conform = 1;
+                        }
                     }
                     else
                     {
-                        if (++continuous_equal > 3)
+                        if (gradient_sign_prob == zero_or_pending)
                         {
-                            gradient_sign = zero_or_pending;
+                            ++gradient_conform;
                         }
+                        else if (gradient_sign_prob == invalid)
+                        {
+                            gradient_sign_prob = zero_or_pending;
+                            gradient_conform = 1;
+                        }   // 斜率不为0时也允许相邻行长度相同。
+                    }
+                    if (gradient_conform >= opts.echelon_gradient_min_continuous)
+                    {
+                        gradient_sign = gradient_sign_prob;
                     }
                 }
                 else
                 {
-                    if (!((rope >= prev_rope && gradient_sign == negative)
+                    if (CS_BUNLIKELY(!((rope >= prev_rope && gradient_sign == negative)
                         || (rope <= prev_rope && gradient_sign == positive)
-                        || (rope == prev_rope && gradient_sign == zero_or_pending)))
+                        || (rope == prev_rope && gradient_sign == zero_or_pending))))
                     {
-                        return false;
+                        CS_DUMP(rope);
+                        CS_DUMP(prev_rope);
+                        CS_DUMP(gradient_sign);
+                        CS_DUMP(wrong_row);
+                        if (++wrong_row > opts.echelon_max_wrong_row)
+                        {
+                            return false;
+                        }
                     }
                 }
             }

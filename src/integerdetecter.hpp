@@ -25,6 +25,12 @@ public:
     void detect()
     {
         prepare();
+        if (!check_x_interact())
+        {
+            res.code = fo_digit_x_interact;
+            return;
+        }
+
         DigitList digits;
         CS_DUMP(pils.imgs.size());
         digits.reserve(pils.imgs.size());

@@ -24,9 +24,18 @@ void Detecter::scale(double rate)
 {
     if (rate != 1.0)
     {
+        CS_DUMP(img.cols);
+        CS_DUMP(img.rows);
         cv::Mat scaled;
+        CS_DUMP(rate);
         cv::resize(img, scaled, cv::Size2i(round(img.cols * rate), round(img.rows * rate)), 0, 0, CV_INTER_LINEAR);
-        img = scaled;
+        img.release();
+        cv::threshold(scaled, img, 0, Config::white, CV_THRESH_BINARY | CV_THRESH_OTSU);
+        CS_DUMP(img.cols);
+        CS_DUMP(img.rows);
+#if CS_DEBUG
+        cv::imwrite("/dev/shm/a.png", img);
+#endif
     }
 }
 

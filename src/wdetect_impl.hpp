@@ -3,6 +3,7 @@
 
 #include "php_wdetect.hpp"
 #include <cstring>
+#include <string>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/tuple/to_seq.hpp>
@@ -95,7 +96,7 @@ protected:
     CS_FORCE_INLINE static void form_retval(zval* return_value, bool res);
 
     CS_FORCE_INLINE static void init_retval(zval* return_value, wdt::ResultCode code, wdt::num_t num);
-    CS_FORCE_INLINE static void init_retval(zval* return_value, wdt::ResultCode code, wdt::rate_t rate);
+    CS_FORCE_INLINE static void init_retval(zval* return_value, wdt::ResultCode code, const std::string& rate);
     CS_FORCE_INLINE static void init_retval(zval* return_value, wdt::ResultCode code);
     CS_FORCE_INLINE static void init_retval(zval* return_value);
 };
@@ -129,7 +130,9 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
         chart_min_height, chart_max_height,
         echelons, echelon_padding_left,
         chart_min_margin_right, chart_max_margin_right,
-        chart_margin_max_fg
+        chart_margin_max_fg,
+        echelon_max_wrong_row,
+        echelon_gradient_min_continuous
     );
     return opts;
 }
@@ -287,10 +290,11 @@ void Proxy::form_retval(zval* return_value, const wdt::ChartRes& res)
     add_next_index_long(return_value, res.chart_width);
 }
 
-void Proxy::init_retval(zval* return_value, wdt::ResultCode code, wdt::rate_t rate)
+void Proxy::init_retval(zval* return_value, wdt::ResultCode code, const std::string& rate)
 {
     init_retval(return_value, code);
-    add_next_index_double(return_value, rate);
+    add_next_index_stringl(return_value, rate.c_str(), rate.size(), true);
+//    add_next_index_double(return_value, rate);
 }
 
 void Proxy::init_retval(zval* return_value, wdt::ResultCode code, wdt::num_t num)

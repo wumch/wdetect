@@ -7,6 +7,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "numdetecterbase.hpp"
+#include "math.hpp"
 #include "cvdef.hpp"
 #include "facade.hpp"
 
@@ -26,11 +27,17 @@ public:
     void detect()
     {
         prepare();
+        CS_DUMP(pils.imgs.size());
         rstrip_percent();
+        CS_DUMP(pils.imgs.size());
 
-        res.percent = .0;
-        DigitList digits;
-        digits.reserve(pils.imgs.size());
+        if (!check_x_interact())
+        {
+            res.code = fo_digit_x_interact;
+            return;
+        }
+
+        res.percent.reserve(pils.imgs.size());
         bool broken = false;
         for (ImageList::const_iterator it = pils.imgs.begin(); it != pils.imgs.end(); ++it)
         {
@@ -44,18 +51,16 @@ public:
             }
             else if (digit == digit_dot)
             {
-                res.percent += digits_to_num(digits);
-                digits.clear();
+                res.percent += '.';
             }
             else
             {
-                digits.push_back(digit);
+                res.percent +=  '0' + digit;
             }
         }
 
         if (!broken)
         {
-            res.percent += digits_to_num(digits) / std::pow(10, digits.size());
             res.code = success;
         }
     }
@@ -64,8 +69,8 @@ protected:
     // TODO: more flexible, more graceful.
     void rstrip_percent()
     {
-        static const int32_t percent_max_parts = 3, invalid_widest_idx = -1;
-        const int32_t percent_parts = std::min<int32_t>(pils.poses.size(), percent_max_parts);
+        static const int32_t slash_max_offset_tail = 3, invalid_widest_idx = -1;
+        const int32_t percent_parts = std::min<int32_t>(pils.poses.size(), slash_max_offset_tail);
         int32_t widest_idx = invalid_widest_idx;
         const int32_t first_idx = pils.poses.size() - percent_parts;
         {
@@ -86,12 +91,22 @@ protected:
         const isize_t pcircle_min_height = round(opts.digit_height * 0.6);
         const isize_t widest_left = pils.poses[widest_idx].x;
         const isize_t widest_right = widest_left + pils.imgs[widest_idx].cols;
+        const isize_t y_min = pils.y_mode - 2, y_max = pils.y_mode + 2;
+        const bool widest_valid = (widest_idx >= pils.imgs.size() - 2)
+                || (pils.imgs[widest_idx].cols > opts.digit_max_width);
 
         for (int32_t i = pils.poses.size() - 1; i >= first_idx; --i)
         {
-            if (i == widest_idx || interact(widest_left, widest_right, i)
-                || pils.imgs[i].rows < pcircle_min_height)
+            if ((widest_valid && (i == widest_idx || interact(i, widest_left, widest_right)))
+                || pils.imgs[i].rows <= pcircle_min_height
+                || !staging::between(pils.imgs[i].cols, opts.digit_min_width, opts.digit_max_width)
+                || !staging::between(pils.poses[i].y, y_min, y_max))
             {
+                CS_DUMP(i);
+                CS_DUMP(interact(i, widest_left, widest_right));
+                CS_DUMP(y_min);
+                CS_DUMP(y_max);
+                CS_DUMP(pils.poses[i].y);
                 pils.pop_back();
                 CS_SAY("striped one for percent");
             }
@@ -100,13 +115,6 @@ protected:
                 break;
             }
         }
-    }
-
-    bool interact(int32_t other_idx, isize_t widest_left, isize_t widest_right) const
-    {
-        const isize_t other_left = pils.poses[other_idx].x;
-        const isize_t other_right = other_left + pils.imgs[other_idx].cols;
-        return !(other_right <= widest_left || widest_right <= other_left);
     }
 
     CS_FORCE_INLINE void checkin(BoundList& bounds, const Bound& bound) const

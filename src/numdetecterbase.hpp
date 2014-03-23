@@ -86,14 +86,36 @@ protected:
         return shadow;
     }
 
-    void _devide(const Bound& bound, BoundList& bounds) const
+    bool check_x_interact() const
     {
-        _devide(img(bound), bounds);
-        for (BoundList::iterator it = bounds.begin(); it != bounds.end(); ++it)
+        CS_RETURN_IF(pils.imgs.empty(), true);
+
+        isize_t prev_left = pils.poses[0].x, prev_right = prev_left + pils.imgs[0].cols;
+        isize_t cur_left, cur_right;
+        for (int32_t i = 1; i < pils.imgs.size(); ++i)
         {
-            it->x += bound.x;
-            it->y += bound.y;
+            cur_left = pils.poses[i].x;
+            cur_right = cur_left + pils.imgs[i].cols;
+            if (interact(cur_left, cur_right, prev_left, prev_right))
+            {
+                return false;
+            }
+            prev_left = cur_left;
+            prev_right = cur_right;
         }
+        return true;
+    }
+
+    bool interact(int32_t other_idx, isize_t widest_left, isize_t widest_right) const
+    {
+        const isize_t other_left = pils.poses[other_idx].x;
+        const isize_t other_right = other_left + pils.imgs[other_idx].cols;
+        return interact(widest_left, widest_right, other_left, other_right);
+    }
+
+    bool interact(isize_t a_left, isize_t a_right, isize_t b_left, isize_t b_right) const
+    {
+        return !(a_right <= b_left || b_right <= a_left);
     }
 
     void divide(const cv::Mat& frag) const

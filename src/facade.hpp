@@ -3,6 +3,7 @@
 
 #include "predef.hpp"
 #include <map>
+#include <string>
 #include <functional>
 #include <string>
 
@@ -61,6 +62,7 @@ typedef enum {
     fo_recognize      = 11,    // 文字信息检测失败(具体错误看数据)
 
     fo_calc_chart_width = 12,   // 计算图表宽度失败
+    fo_digit_x_interact = 13,   // 图像上的数字 横向相交
 } ResultCode;
 
 // to resident into php array, it's better to be an ordered map.
@@ -106,7 +108,7 @@ public:
 class PercentRes: public DetectRes
 {
 public:
-    rate_t percent;
+    std::string percent;
 };
 
 // prepare/locate/detect options
@@ -147,6 +149,8 @@ public:
     isize_t echelon_padding_left;    // 梯形左补白
     isize_t chart_min_margin_right, chart_max_margin_right;
     int32_t chart_margin_max_fg;
+    int32_t echelon_max_wrong_row;    // 违反斜率最多行数
+    int32_t echelon_gradient_min_continuous;    // 垂直(斜率为1)最少连续相等行数
 };
 
 // detect-inside-bound options
