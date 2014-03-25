@@ -30,12 +30,14 @@ class Detecter
         \WDetecter::ERR_DETECT_FAILED => '探测失败',
         \WDetecter::ERR_RECOGNIZE_FAILED => '识别失败',
         \WDetecter::ERR_CALC_CHART_WIDTH => '计算图表宽度失败',
+        \WDetecter::ERR_CALC_CHART_HEIGHT => '计算图表高度失败',
         \WDetecter::ERR_DIGIT_X_INTERACT => '图像上的数字横向重叠(可能是数字笔画有断开)',
     );
 
     protected static $optsNamespaces = array(
-        '\Opts\Small' => array(170, 180),
-        '\Opts\Large' => array(190, 200),
+        '\Opts\Small' => array(array(170, 180), array(133, 143)),
+        '\Opts\Large' => array(array(190, 200), array(146, 160)),
+        '\Opts\High' => array(array(190, 200), array(172, 182)),
     );
     private $optsNamespace;
 
@@ -54,6 +56,8 @@ class Detecter
 
     public function detectAll($imgFile)
     {
+        $this->println($imgFile);
+        $allRight = true;
         $prepareOpts = (array)(new \Opts\PrepareOpts);
         $prepareOpts['img_file'] = $imgFile;
         $prepareRes = $this->wdter->prepare($prepareOpts);
@@ -63,22 +67,30 @@ class Detecter
             $locateRes = $this->wdter->locate($chartOpts);
             if ($locateRes[0] === \WDetecter::OK)
             {
-                $chartWidth = $locateRes[3];
+                list($chartWidth, $chartHeight) = $locateRes[3];
+                var_dump($chartWidth);
+                var_dump($chartHeight);
                 $this->optsNamespace = null;
                 foreach (static::$optsNamespaces as $namespace => &$range)
                 {
-                    if ($range[0] <= $chartWidth and $chartWidth <= $range[1])
+                    list($widthRange, $heightRange) = $range;
+                    if ($widthRange[0] <= $chartWidth and $chartWidth <= $widthRange[1]
+                        and $heightRange[0] <= $chartHeight and $chartHeight <= $heightRange[1])
                     {
                         $this->optsNamespace = $namespace;
                     }
                 }
                 if ($this->optsNamespace === null)
                 {
-                    throw new \Exception("no matching chart-width: {$chartWidth}", 10086);
+                    $allRight = false;
+                    throw new \Exception("no matching chart-width/height: {$chartWidth}/{$chartHeight}", 10086);
                 }
             }
             if ($locateRes[0] === \WDetecter::OK)
             {
+                $this->println("detected rates-from-chart: [" .
+                    implode(', ', array_map(function($r) {return sprintf('%3.2f', $r * 100);}, $locateRes[1]))
+                    . ']');
                 $optClasses = array(
                     'SongdaROC', 'TuwenROC', 'YuanwenROC', 'ShareROC',
                     'Songda',
@@ -89,22 +101,28 @@ class Detecter
                 list($x0, $y0) = $locateRes[2];
                 foreach ($optClasses as $optClass)
                 {
-                    $this->{'detect' . $optClass}($x0, $y0);
+                    if (!$this->{'detect' . $optClass}($x0, $y0))
+                    {
+                        $allRight = false;
+                    }
                 }
             }
             else
             {
+                $allRight = false;
                 $this->println('failed on locating: ' . static::$errors[$locateRes[0]] . PHP_EOL . 'params:');
                 $this->printr($locateRes);
                 $this->printr($chartOpts);
-                echo str_repeat('-', 40), PHP_EOL;
+                $this->println(str_repeat('-', 40));
             }
         }
         else
         {
+            $allRight = false;
             $this->println('failed on preparing: ' . static::$errors[$prepareRes[0]] . PHP_EOL . 'params:');
             $this->printr($prepareOpts);
         }
+        return $allRight;
     }
 
     protected function detect(array $opts, $kind = '')
@@ -123,7 +141,7 @@ class Detecter
             $this->println('failed on detecting ' . $kind . ': ' . static::$errors[$code]);
             $this->println('params:');
             $this->printr($opts);
-            echo str_repeat('-', 40), PHP_EOL;
+            $this->println(str_repeat('-', 40));
             return false;
         }
     }
@@ -175,8 +193,8 @@ class Detecter
         if ($this->debug)
         {
             print_r($arr);
+            echo str_repeat('-', 40), PHP_EOL;
         }
-        echo str_repeat('-', 40), PHP_EOL;
     }
 
     public static function check()
@@ -227,249 +245,11 @@ class Chart extends LocateOpts
     public $echelons = 3;
     public $echelon_padding_left = 0;
     public $chart_min_margin_right = 12, $chart_max_margin_right = 40;
+    public $chart_min_margin_bottom = 136, $chart_max_margin_bottom = 180,
+        $chart_height_scan_width = 51;
     public $chart_margin_max_fg = 2;
     public $echelon_max_wrong_row = 4;
     public $echelon_gradient_min_continuous = 6;
-}
-
-}
-
-// see 1.jpg/16.jpg
-namespace Opts\Large;
-use Opts;
-{
-
-class DIBOpts extends Opts\DetectOpts
-{
-    public $left, $top, $right, $bottom;
-
-    public function reset($left, $right, $top, $bottom, $x0 = 0, $y0 = 0)
-    {
-        $this->left = $left + $x0;
-        $this->right = $right + $x0;
-        $this->top = $top + $y0;
-        $this->bottom = $bottom + $y0;
-    }
-
-    public function adjust($x0 = 0, $y0 = 0)
-    {
-        $this->left += $x0;
-        $this->right += $x0;
-        $this->top += $y0;
-        $this->bottom += $y0;
-    }
-
-    public function setPadding($padding)
-    {
-        $this->left -= $padding;
-        $this->top -= $padding;
-        $this->right += $padding;
-        $this->bottom += $padding;
-    }
-}
-
-class NumOpts extends DIBOpts
-{
-    public $digit_height = 9;
-    public $digit_min_width = 4;
-    public $digit_max_width = 7;
-    public $circle_min_diameter_v = 2;
-    public $vline_adj = 0, $hline_adj = 0;
-    public $vline_max_break = 0, $hline_max_break = 0;
-    public $vline_min_gap = 2, $hline_min_gap = 2;
-
-    public $comma_max_width = 3, $comma_max_height = 4,
-           $comma_min_area = 3, $comma_protrude = 2;
-
-    public $dot_max_width = 2, $dot_max_height = 2,
-           $dot_min_area = 2;
-}
-
-class IntegerOpts extends NumOpts
-{
-    public $type = \WDetecter::CMD_DETECT_INTEGER;
-}
-
-class PercentOpts extends NumOpts
-{
-    public $type = \WDetecter::CMD_DETECT_PERCENT;
-    public $percent_width = 11;
-}
-
-class ROCOpts extends IntegerOpts
-{
-    protected $padding = 2;
-    protected $width = 48;
-    protected $vgap_min = 33;
-    protected $vgap_max = 38;
-    protected $turn = 0;
-    protected $baseTop = 3;
-
-    public $right = 335;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        $this->left = $this->right - $this->width;
-        if ($this->turn === 1)
-        {
-            $this->left -= 32;
-        }
-        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap_min;
-        $this->bottom = $this->baseTop + ($this->turn - 1) * $this->vgap_max + $this->digit_height + $this->comma_protrude;
-        $this->setPadding($this->padding);
-        $this->adjust($x0, $y0);
-    }
-}
-
-// 送达 图表右侧
-class SongdaROC extends ROCOpts
-{
-    public $turn = 1;
-}
-
-// 图文 图表右侧
-class TuwenROC extends ROCOpts
-{
-    public $turn = 2;
-}
-
-// 原文 图表右侧
-class YuanwenROC extends ROCOpts
-{
-    public $turn = 3;
-}
-
-// 分享 图表右侧
-class ShareROC extends ROCOpts
-{
-    public $turn = 4;
-}
-
-class TabAssist
-{
-    protected static $offsetTop = 269;
-    protected static $padding = 3;
-
-    public static function populate($obj, $x0 = 0, $y0 = 0)
-    {
-        $obj->left += $x0;
-        $obj->right += $x0;
-        $obj->top = $y0 + static::$offsetTop;
-        $obj->bottom = $obj->top + $obj->digit_height;
-        if ($obj instanceof IntegerOpts)
-        {
-            $obj->bottom += $obj->comma_protrude;
-        }
-        $obj->setPadding(static::$padding);
-    }
-}
-
-// 送达 人数
-class Songda extends IntegerOpts
-{
-    public $left = 3;
-    public $right = 93;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 图文 人数
-class Tuwen extends IntegerOpts
-{
-    public $left = 93;
-    public $right = 168;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 图文 次数
-class TuwenTimes extends IntegerOpts
-{
-    public $left = 168;
-    public $right = 247;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 图文 转化率
-class TuwenRate extends PercentOpts
-{
-    public $left = 247;
-    public $right = 345;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 原文 人数
-class Yuanwen extends IntegerOpts
-{
-    public $left = 345;
-    public $right = 410;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 原文 次数
-class YuanwenTimes extends IntegerOpts
-{
-    public $left = 410;
-    public $right = 479;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 原文 转化率
-class YuanwenRate extends PercentOpts
-{
-    public $left = 479;
-    public $right = 586;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 分享 人数
-class Share extends IntegerOpts
-{
-    public $left = 586;
-    public $right = 650;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
-}
-
-// 分享 次数
-class ShareTimes extends IntegerOpts
-{
-    public $left = 650;
-    public $right = 715;
-
-    public function __construct($x0 = 0, $y0 = 0)
-    {
-        TabAssist::populate($this, $x0, $y0);
-    }
 }
 
 }
@@ -714,10 +494,522 @@ class ShareTimes extends IntegerOpts
 
 }
 
+// see 1.jpg/16.jpg
+namespace Opts\Large;
+use Opts;
+{
+
+class DIBOpts extends Opts\DetectOpts
+{
+    public $left, $top, $right, $bottom;
+
+    public function reset($left, $right, $top, $bottom, $x0 = 0, $y0 = 0)
+    {
+        $this->left = $left + $x0;
+        $this->right = $right + $x0;
+        $this->top = $top + $y0;
+        $this->bottom = $bottom + $y0;
+    }
+
+    public function adjust($x0 = 0, $y0 = 0)
+    {
+        $this->left += $x0;
+        $this->right += $x0;
+        $this->top += $y0;
+        $this->bottom += $y0;
+    }
+
+    public function setPadding($padding)
+    {
+        $this->left -= $padding;
+        $this->top -= $padding;
+        $this->right += $padding;
+        $this->bottom += $padding;
+    }
+}
+
+class NumOpts extends DIBOpts
+{
+    public $digit_height = 9;
+    public $digit_min_width = 4;
+    public $digit_max_width = 7;
+    public $circle_min_diameter_v = 2;
+    public $vline_adj = 0, $hline_adj = 0;
+    public $vline_max_break = 0, $hline_max_break = 0;
+    public $vline_min_gap = 2, $hline_min_gap = 2;
+
+    public $comma_max_width = 3, $comma_max_height = 4,
+           $comma_min_area = 3, $comma_protrude = 2;
+
+    public $dot_max_width = 2, $dot_max_height = 2,
+           $dot_min_area = 2;
+}
+
+class IntegerOpts extends NumOpts
+{
+    public $type = \WDetecter::CMD_DETECT_INTEGER;
+}
+
+class PercentOpts extends NumOpts
+{
+    public $type = \WDetecter::CMD_DETECT_PERCENT;
+    public $percent_width = 11;
+}
+
+class ROCOpts extends IntegerOpts
+{
+    protected $padding = 2;
+    protected $width = 48;
+    protected $vgap_min = 33;
+    protected $vgap_max = 38;
+    protected $turn = 0;
+    protected $baseTop = 3;
+
+    public $right = 335;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        $this->left = $this->right - $this->width;
+        if ($this->turn === 1)
+        {
+            $this->left -= 32;
+        }
+        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap_min;
+        $this->bottom = $this->baseTop + ($this->turn - 1) * $this->vgap_max + $this->digit_height + $this->comma_protrude;
+        $this->setPadding($this->padding);
+        $this->adjust($x0, $y0);
+    }
+}
+
+// 送达 图表右侧
+class SongdaROC extends ROCOpts
+{
+    public $turn = 1;
+}
+
+// 图文 图表右侧
+class TuwenROC extends ROCOpts
+{
+    public $turn = 2;
+}
+
+// 原文 图表右侧
+class YuanwenROC extends ROCOpts
+{
+    public $turn = 3;
+}
+
+// 分享 图表右侧
+class ShareROC extends ROCOpts
+{
+    public $turn = 4;
+}
+
+class TabAssist
+{
+    protected static $offsetTop = 269;
+    protected static $padding = 3;
+
+    public static function populate($obj, $x0 = 0, $y0 = 0)
+    {
+        $obj->left += $x0;
+        $obj->right += $x0;
+        $obj->top = $y0 + static::$offsetTop;
+        $obj->bottom = $obj->top + $obj->digit_height;
+        if ($obj instanceof IntegerOpts)
+        {
+            $obj->bottom += $obj->comma_protrude;
+        }
+        $obj->setPadding(static::$padding);
+    }
+}
+
+// 送达 人数
+class Songda extends IntegerOpts
+{
+    public $left = 3;
+    public $right = 93;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 人数
+class Tuwen extends IntegerOpts
+{
+    public $left = 93;
+    public $right = 168;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 次数
+class TuwenTimes extends IntegerOpts
+{
+    public $left = 168;
+    public $right = 247;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 转化率
+class TuwenRate extends PercentOpts
+{
+    public $left = 247;
+    public $right = 345;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 人数
+class Yuanwen extends IntegerOpts
+{
+    public $left = 345;
+    public $right = 410;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 次数
+class YuanwenTimes extends IntegerOpts
+{
+    public $left = 410;
+    public $right = 479;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 转化率
+class YuanwenRate extends PercentOpts
+{
+    public $left = 479;
+    public $right = 586;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 人数
+class Share extends IntegerOpts
+{
+    public $left = 586;
+    public $right = 650;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 次数
+class ShareTimes extends IntegerOpts
+{
+    public $left = 650;
+    public $right = 715;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+}
+
+// see height.jpg
+namespace Opts\High;
+use Opts;
+{
+
+class DIBOpts extends Opts\DetectOpts
+{
+    public $left, $top, $right, $bottom;
+
+    public function reset($left, $right, $top, $bottom, $x0 = 0, $y0 = 0)
+    {
+        $this->left = $left + $x0;
+        $this->right = $right + $x0;
+        $this->top = $top + $y0;
+        $this->bottom = $bottom + $y0;
+    }
+
+    public function adjust($x0 = 0, $y0 = 0)
+    {
+        $this->left += $x0;
+        $this->right += $x0;
+        $this->top += $y0;
+        $this->bottom += $y0;
+    }
+
+    public function setPadding($padding)
+    {
+        $this->left -= $padding;
+        $this->top -= $padding;
+        $this->right += $padding;
+        $this->bottom += $padding;
+    }
+}
+
+class NumOpts extends DIBOpts
+{
+    public $digit_height = 9;
+    public $digit_min_width = 4;
+    public $digit_max_width = 7;
+    public $circle_min_diameter_v = 2;
+    public $vline_adj = 0, $hline_adj = 0;
+    public $vline_max_break = 0, $hline_max_break = 0;
+    public $vline_min_gap = 2, $hline_min_gap = 2;
+
+    public $comma_max_width = 3, $comma_max_height = 4,
+           $comma_min_area = 3, $comma_protrude = 2;
+
+    public $dot_max_width = 2, $dot_max_height = 2,
+           $dot_min_area = 2;
+}
+
+class IntegerOpts extends NumOpts
+{
+    public $type = \WDetecter::CMD_DETECT_INTEGER;
+}
+
+class PercentOpts extends NumOpts
+{
+    public $type = \WDetecter::CMD_DETECT_PERCENT;
+    public $percent_width = 11;
+}
+
+class ROCOpts extends IntegerOpts
+{
+    protected $padding = 2;
+    protected $width = 48;
+    protected $vgap_min = 33;
+    protected $vgap_max = 38;
+    protected $turn = 0;
+    protected $baseTop = 3;
+
+    public $right = 335;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        $this->left = $this->right - $this->width;
+        if ($this->turn === 1)
+        {
+            $this->left -= 32;
+        }
+        $this->top = $this->baseTop + ($this->turn - 1) * $this->vgap_min;
+        $this->bottom = $this->baseTop + ($this->turn - 1) * $this->vgap_max + $this->digit_height + $this->comma_protrude;
+        $this->setPadding($this->padding);
+        $this->adjust($x0, $y0);
+    }
+}
+
+// 送达 图表右侧
+class SongdaROC extends ROCOpts
+{
+    public $turn = 1;
+}
+
+// 图文 图表右侧
+class TuwenROC extends ROCOpts
+{
+    public $turn = 2;
+}
+
+// 原文 图表右侧
+class YuanwenROC extends ROCOpts
+{
+    public $turn = 3;
+}
+
+// 分享 图表右侧
+class ShareROC extends ROCOpts
+{
+    public $turn = 4;
+}
+
+class TabAssist
+{
+    protected static $offsetTop = 291;
+    protected static $padding = 3;
+
+    public static function populate($obj, $x0 = 0, $y0 = 0)
+    {
+        $obj->left += $x0;
+        $obj->right += $x0;
+        $obj->top = $y0 + static::$offsetTop;
+        $obj->bottom = $obj->top + $obj->digit_height;
+        if ($obj instanceof IntegerOpts)
+        {
+            $obj->bottom += $obj->comma_protrude;
+        }
+        $obj->setPadding(static::$padding);
+    }
+}
+
+// 送达 人数
+class Songda extends IntegerOpts
+{
+    public $left = 3;
+    public $right = 93;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 人数
+class Tuwen extends IntegerOpts
+{
+    public $left = 93;
+    public $right = 168;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 次数
+class TuwenTimes extends IntegerOpts
+{
+    public $left = 168;
+    public $right = 247;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 图文 转化率
+class TuwenRate extends PercentOpts
+{
+    public $left = 247;
+    public $right = 345;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 人数
+class Yuanwen extends IntegerOpts
+{
+    public $left = 345;
+    public $right = 410;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 次数
+class YuanwenTimes extends IntegerOpts
+{
+    public $left = 410;
+    public $right = 479;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 原文 转化率
+class YuanwenRate extends PercentOpts
+{
+    public $left = 479;
+    public $right = 586;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 人数
+class Share extends IntegerOpts
+{
+    public $left = 586;
+    public $right = 650;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+// 分享 次数
+class ShareTimes extends IntegerOpts
+{
+    public $left = 650;
+    public $right = 715;
+
+    public function __construct($x0 = 0, $y0 = 0)
+    {
+        TabAssist::populate($this, $x0, $y0);
+    }
+}
+
+}
+
 if ($GLOBALS['argc'])
 {
-    $imgFile = $GLOBALS['argc'] > 1 ? $GLOBALS['argv'][1] : "/data/fsuggest/wdetect.forgiven/data/16.jpg";
-    $detecter = new \Snape\Utility\Detecter(true);
-    $detecter->check();
-    $detecter->detectAll($imgFile);
+    $path = $GLOBALS['argc'] > 1 ? $GLOBALS['argv'][1] : "/data/fsuggest/wdetect.forgiven/data/16.jpg";
+    if (is_dir($path))
+    {
+        $total = 0;
+        $allRight = 0;
+        $path = rtrim($path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        foreach (scandir($path) as $filename)
+        {
+            if (in_array(strtolower(substr($filename, strlen($filename) - 4)), array('.jpg', '.png')))
+            {
+                $imgFile = $path . $filename;
+                if (is_file($imgFile))
+                {
+                    $detecter = new \Snape\Utility\Detecter(true);
+                    $success = $detecter->detectAll($imgFile);
+                    $allRight += !!$success;
+                    ++$total;
+                    if ($success)
+                    {
+                        echo 'succeed: ', $imgFile, PHP_EOL;
+                    }
+                    else
+                    {
+                        echo 'failed: ', $imgFile, PHP_EOL;
+                    }
+                    echo PHP_EOL;
+                }
+            }
+        }
+        echo "total:{$total}, all-right: {$allRight}, success-rate: " . sprintf('%.2f%%', $allRight/$total*100), PHP_EOL;
+    }
+    else
+    {
+        $detecter = new \Snape\Utility\Detecter(true);
+        $detecter->detectAll($path);
+    }
 }
