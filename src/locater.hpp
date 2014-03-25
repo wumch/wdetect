@@ -32,6 +32,7 @@ protected:
     bool detect(const Bound& chart_bound);
 
     void calc_width(const Bound& box);
+    void calc_height(const Bound& box);
 
 private:
     CS_FORCE_INLINE bool valid(const Bound& bound) const;
@@ -45,7 +46,8 @@ private:
     CS_FORCE_INLINE double cal_x(double gradient_inv, double x0, double y0, double y) const;
     CS_FORCE_INLINE double cal_x(const cv::Vec4f& line, double y) const;
 
-    bool is_margin(isize_t col, isize_t top, isize_t bottom) const;
+    bool is_margin_col(isize_t col, isize_t top, isize_t bottom) const;
+    bool is_margin_row(isize_t row, isize_t left, isize_t right) const;
 };
 
 }

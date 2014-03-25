@@ -62,7 +62,8 @@ typedef enum {
     fo_recognize      = 11,    // 文字信息检测失败(具体错误看数据)
 
     fo_calc_chart_width = 12,   // 计算图表宽度失败
-    fo_digit_x_interact = 13,   // 图像上的数字 横向相交
+    fo_calc_chart_height = 13,   // 计算图表高度失败
+    fo_digit_x_interact = 14,   // 图像上的数字 横向相交
 } ResultCode;
 
 // to resident into php array, it's better to be an ordered map.
@@ -93,6 +94,7 @@ class ChartRes: public LocateRes
 {
 public:
     isize_t chart_width;
+    isize_t chart_height;
     RateList rates;
 };
 
@@ -148,6 +150,8 @@ public:
     int32_t echelons;    // 梯形最大数量
     isize_t echelon_padding_left;    // 梯形左补白
     isize_t chart_min_margin_right, chart_max_margin_right;
+    isize_t chart_min_margin_bottom, chart_max_margin_bottom;
+    isize_t chart_height_scan_width;
     int32_t chart_margin_max_fg;
     int32_t echelon_max_wrong_row;    // 违反斜率最多行数
     int32_t echelon_gradient_min_continuous;    // 垂直(斜率为1)最少连续相等行数

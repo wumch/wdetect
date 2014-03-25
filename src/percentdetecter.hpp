@@ -66,8 +66,28 @@ public:
     }
 
 protected:
-    // TODO: more flexible, more graceful.
     void rstrip_percent()
+    {
+        CS_RETURN_IF(pils.imgs.empty());
+        const isize_t right = pils.poses.rbegin()->x + pils.imgs.rbegin()->cols;
+        static const int32_t percent_max_parts = 6;
+        const isize_t min_distance = opts.percent_width;
+        for (int32_t i = pils.imgs.size() - 1, end = std::max<int32_t>(0, pils.imgs.size() - percent_max_parts - 1); i > end; --i)
+        {
+            if ((right - (pils.poses[i].x + pils.imgs[i].cols)) < min_distance)
+            {
+                CS_SAY("striped one for percent");
+                pils.pop_back();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    // TODO: more flexible, more graceful.
+    void rstrip_percent_()
     {
         static const int32_t slash_max_offset_tail = 3, invalid_widest_idx = -1;
         const int32_t percent_parts = std::min<int32_t>(pils.poses.size(), slash_max_offset_tail);

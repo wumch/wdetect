@@ -97,6 +97,7 @@ PHP_MINIT_FUNCTION(wdetect)
 	_WDT_CLASS_CONST_LONG("ERR_RECOGNIZE_FAILED", wdt::fo_recognize);
 
 	_WDT_CLASS_CONST_LONG("ERR_CALC_CHART_WIDTH", wdt::fo_calc_chart_width);
+	_WDT_CLASS_CONST_LONG("ERR_CALC_CHART_HEIGHT", wdt::fo_calc_chart_height);
 	_WDT_CLASS_CONST_LONG("ERR_DIGIT_X_INTERACT", wdt::fo_digit_x_interact);
 
 	return SUCCESS;

@@ -130,6 +130,7 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
         chart_min_height, chart_max_height,
         echelons, echelon_padding_left,
         chart_min_margin_right, chart_max_margin_right,
+        chart_min_margin_bottom, chart_max_margin_bottom, chart_height_scan_width,
         chart_margin_max_fg,
         echelon_max_wrong_row,
         echelon_gradient_min_continuous
@@ -287,7 +288,14 @@ void Proxy::form_retval(zval* return_value, const wdt::ChartRes& res)
         add_next_index_long(array, res.top);
         add_next_index_zval(return_value, array);
     }
-    add_next_index_long(return_value, res.chart_width);
+    {
+        zval* array;
+        MAKE_STD_ZVAL(array);
+        array_init(array);
+        add_next_index_long(array, res.chart_width);
+        add_next_index_long(array, res.chart_height);
+        add_next_index_zval(return_value, array);
+    }
 }
 
 void Proxy::init_retval(zval* return_value, wdt::ResultCode code, const std::string& rate)

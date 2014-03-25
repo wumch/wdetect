@@ -209,9 +209,13 @@ protected:
     {
         for (int32_t i = 0, end = pils.imgs.size() - (kind == percent); i < end; )
         {
+            CS_DUMP(end);
             if (pils.imgs[i].cols > opts.digit_max_width)
             {
-                delimit(i);
+                if (!delimit(i))
+                {
+                    break;  // will fail anyhow.
+                }
             }
             else
             {
@@ -222,8 +226,9 @@ protected:
 
     static const int32_t invalid_delimiter = -1;
 
-    void delimit(const int32_t img_idx)
+    bool delimit(const int32_t img_idx)
     {
+        CS_DUMP(img_idx);
         const isize_t delimiter = get_delimiter(pils.imgs[img_idx]);
         if (delimiter != invalid_delimiter)
         {
@@ -247,8 +252,10 @@ protected:
                 pils.poses.insert(pils.poses.begin() + img_idx + 1, Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y));
                 WDT_IM_SHOW(pils.imgs[img_idx + 1]);
                 WDT_IM_SHOW(pils.imgs[img_idx]);
+                return true;
             }
         }
+        return false;
     }
 
     isize_t get_delimiter(const cv::Mat& img) const

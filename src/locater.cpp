@@ -60,11 +60,66 @@ void Locater::locate()
     if (detected)
     {
         calc_width(box);
+        calc_height(box);
     }
     else
     {
         res.code = fo_no_match;
     }
+}
+
+void Locater::calc_height(const Bound& box)
+{
+    static const int32_t min_continuous_fg_rows = 4;
+    const isize_t left = box.x;
+    int32_t fg_cols = 0;
+    bool found = false;
+    CS_DUMP(box.x);
+    CS_DUMP(box.width);
+    const isize_t top = std::max(box.y + opts.chart_min_margin_bottom, 0),
+        bottom = std::min(box.y + opts.chart_max_margin_bottom + min_continuous_fg_rows + 2, img.rows);
+    for (isize_t row = top; row < bottom; ++row)
+    {
+        CS_DUMP(row);
+        if (is_margin_row(row, left, opts.chart_height_scan_width))
+        {
+            if (fg_cols)
+            {
+                fg_cols = 0;
+            }
+        }
+        else
+        {
+            CS_DUMP(fg_cols);
+            if (++fg_cols >= min_continuous_fg_rows)
+            {
+                found = true;
+                res.chart_height = row - fg_cols - box.y;
+                break;
+            }
+        }
+    }
+    if (!found)
+    {
+        res.code = fo_calc_chart_height;
+    }
+}
+
+bool Locater::is_margin_row(isize_t row, isize_t left, isize_t width) const
+{
+    int32_t fgs = 0;
+    const uint8_t* pixels = img.ptr<uint8_t>(row) + left;
+    for (const uint8_t* const end = pixels + width; pixels != end; ++pixels)
+    {
+        if (CS_BUNLIKELY(is_fg(*pixels)))
+        {
+            if (++fgs > opts.chart_margin_max_fg)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 void Locater::calc_width(const Bound& box)
@@ -83,7 +138,7 @@ void Locater::calc_width(const Bound& box)
         col < end; ++col)
     {
         CS_DUMP(col);
-        if (is_margin(col, top, bottom))
+        if (is_margin_col(col, top, bottom))
         {
             if (fg_cols)
             {
@@ -107,7 +162,7 @@ void Locater::calc_width(const Bound& box)
     }
 }
 
-bool Locater::is_margin(isize_t col, isize_t top, isize_t bottom) const
+bool Locater::is_margin_col(isize_t col, isize_t top, isize_t bottom) const
 {
     int32_t fgs = 0;
     for (isize_t row = top; row < bottom; ++row)
