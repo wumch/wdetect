@@ -68,7 +68,18 @@ protected:
         return true;
     }
 
-    num_t digits_to_num(const DigitList& digits) const
+    std::string digits_to_num(const DigitList& digits) const
+    {
+        std::string result;
+        result.reserve(digits.size());
+        for (DigitList::const_iterator it = digits.begin(); it != digits.end(); ++it)
+        {
+            result.append(1, *it == digit_comma ? ',' : ('0' + *it));
+        }
+        return result;
+    }
+
+    num_t _digits_to_num(const DigitList& digits) const
     {
         num_t result = 0;
         for (DigitList::const_iterator it = digits.begin(); it != digits.end(); ++it)

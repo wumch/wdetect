@@ -22,9 +22,9 @@
 #   include <opencv2/highgui/highgui.hpp>
 #   define WDT_SHOW_IMG(img)                                         \
     do {                                                            \
-        CS_SAY("show image: " << CS_STRINGIZE(img));                \
-        cv::namedWindow(CS_STRINGIZE(img), CV_WINDOW_NORMAL);       \
-        cv::imshow(CS_STRINGIZE(img), img);                         \
+        CS_SAY("show image: " << CS_STR_LITER(img));                \
+        cv::namedWindow(CS_STR_LITER(img), CV_WINDOW_NORMAL);       \
+        cv::imshow(CS_STR_LITER(img), img);                         \
         cv::waitKey();                                              \
     } while (false)
 #else

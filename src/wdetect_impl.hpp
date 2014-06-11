@@ -22,14 +22,14 @@ zend_object_handlers detecter_object_handlers;
 
 // NOTE: make sure really assigned to `DEST`.
 #define _WDT_GET_OPT_LONG(SRC, DEST, MED, NAME) \
-if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STRINGIZE(NAME), CS_CONST_STRLEN(CS_STRINGIZE(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
+if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_LITER(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
 {                                           \
     convert_to_long_ex(MED);                \
     DEST = Z_LVAL_PP(MED);                  \
 }
 
 #define _WDT_FETCH_OPT_LONG(SRC, DEST, MED, NAME) \
-if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STRINGIZE(NAME), CS_CONST_STRLEN(CS_STRINGIZE(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
+if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_LITER(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
 {                                           \
     convert_to_long_ex(MED);                \
     DEST.NAME = Z_LVAL_PP(MED);             \

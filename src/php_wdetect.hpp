@@ -29,9 +29,9 @@ extern "C" {
 
 #include "predef.hpp"
 extern "C" {
-#include "php5/main/php.h"
-#include "php5/main/php_ini.h"
-#include "php5/ext/standard/info.h"
+#include "php/main/php.h"
+#include "php/main/php_ini.h"
+#include "php/ext/standard/info.h"
 }
 
 extern "C" zend_module_entry wdetect_module_entry;
@@ -47,7 +47,7 @@ extern "C" zend_module_entry wdetect_module_entry;
 
 #ifdef ZTS
 BEGIN_EXTERN_C()
-#include "php5/TSRM/TSRM.h"
+#include "php/TSRM/TSRM.h"
 }
 END_EXTERN_C()
 #endif

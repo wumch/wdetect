@@ -104,7 +104,7 @@ class DetectRes: public Result
 class IntegerRes: public DetectRes
 {
 public:
-    num_t num;
+    std::string num;
 };
 
 class PercentRes: public DetectRes

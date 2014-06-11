@@ -47,7 +47,7 @@ public:
                 broken = true;
                 break;
             }
-            else if (digit != digit_comma)
+            else
             {
                 digits.push_back(digit);
             }

@@ -5,7 +5,7 @@
 #include <string>
 #include <iostream>
 extern "C" {
-#include <php5/TSRM/tsrm_virtual_cwd.h>
+#include <php/TSRM/tsrm_virtual_cwd.h>
 }
 #if defined(HAVE_BOOST_FILESYSTEM) && HAVE_BOOST_FILESYSTEM
 #   include <boost/filesystem/operations.hpp>
@@ -18,28 +18,6 @@ extern "C" {
 #include "facade.hpp"
 
 namespace wdt {
-
-void Preprocer::cal_bounds(const cv::Mat& bimg, BoundList& bounds) const
-{
-    ContourList contours;
-    {
-        cv::Mat shadow;
-        bimg.copyTo(shadow);
-        cv::findContours(shadow, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-    }
-    for (ContourList::iterator it = contours.begin(); it != contours.end(); ++it)
-    {
-        checkin(cv::boundingRect(*it), bounds);
-    }
-}
-
-void Preprocer::checkin(const Bound& bound, BoundList& bounds) const
-{
-    if (valid(bound))
-    {
-        bounds.push_back(bound);
-    }
-}
 
 cv::Mat Preprocer::binarize(const char* img_file) const
 {

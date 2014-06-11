@@ -280,9 +280,9 @@ digit_t Recognizer::recognize(Sophist& sop) const
         {
             detect_vline(sop);
             CS_DUMP((int)sop.vline);
+            detect_circle(sop);
             if (sop.vline == 0)
             {
-                detect_circle(sop);
                 CS_DUMP((int)sop.circle);
                 CS_DUMP((int)sop.circle_pos);
                 if (sop.circle == 0)
@@ -311,10 +311,14 @@ digit_t Recognizer::recognize(Sophist& sop) const
                     return 8;
                 }
             }
-            else if (sop.vline == 1)
+            if (sop.circle == 2)
             {
-                return 1;
+                return 8;
             }
+//            else if (sop.vline == 1)
+//            {
+//                return 1;
+//            }
         }
         else if (sop.hline == 1)
         {
