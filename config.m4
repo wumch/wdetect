@@ -18,7 +18,7 @@ if test "$PHP_WDETECT" != "no"; then
   dnl Write more examples of tests here...
   PHP_REQUIRE_CXX()
   AC_LANG_PUSH([C++])
-  CXX=clang++
+  CXX=g++
   
   # --with-wdetect -> check with-path
   SEARCH_PATH=". /usr /usr/local"     # you might want to change this
