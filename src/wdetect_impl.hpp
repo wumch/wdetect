@@ -183,7 +183,7 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
 
 void Proxy::detect(wdt::Detecter* detecter, const zval* options, zval* return_value)
 {
-    int32_t command;
+    int32_t command = wdt::detect_unknown;
     {
         zval** medium;
         _WDT_GET_OPT_LONG(options, command, medium, type);
@@ -230,7 +230,7 @@ void Proxy::scale(wdt::Detecter* detecter, const double rate, zval* return_value
 
 void Proxy::locate(wdt::Detecter* detecter, const zval* options, zval* return_value)
 {
-    int32_t command;
+    int32_t command = wdt::locate_unknown;
     {
         zval** medium;
         _WDT_GET_OPT_LONG(options, command, medium, type);

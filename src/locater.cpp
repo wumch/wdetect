@@ -190,11 +190,10 @@ bool Locater::detect(const Bound& chart_bound)
     echelons.reserve(opts.echelons);
     EchelonList::reverse_iterator echelon;
 
-    isize_t rope, prev_rope;
-    isize_t continuous_equal = 0;
+    isize_t rope, prev_rope = 0;
     isize_t gradient_conform = 0;
-    enum gradient_sign { negative = -1, zero_or_pending = 0, positive = 1, invalid = -2};
-    gradient_sign gradient_sign = invalid, gradient_sign_prob = invalid; // 斜率符号（-1/0/1有效, -2无效)
+    enum gradient_sign_t { negative = -1, zero_or_pending = 0, positive = 1, invalid = -2};
+    gradient_sign_t gradient_sign = invalid, gradient_sign_prob = invalid; // 斜率符号（-1/0/1有效, -2无效)
     int32_t wrong_row = 0;
     for (isize_t row = 0; row < chart.rows; ++row)
     {
@@ -208,8 +207,8 @@ bool Locater::detect(const Bound& chart_bound)
                 }
                 CS_SAY("new echelon began at [" << row << "]");
                 prev_valid = true;
-                continuous_equal = 0;
                 gradient_sign_prob = invalid;
+                gradient_sign = invalid;
                 echelons.push_back(RopeList());
                 echelon = echelons.rbegin();
             }
@@ -287,7 +286,7 @@ bool Locater::detect(const Bound& chart_bound)
     const isize_t eche_min_height = opts.chart_min_height - 2;
     for (EchelonList::iterator it = echelons.begin(); it != echelons.end(); )
     {
-        if (it->size() < eche_min_height)
+        if (static_cast<ssize_t>(it->size()) < eche_min_height)
         {
             it = echelons.erase(it);
         }
@@ -311,7 +310,7 @@ bool Locater::detect(const Bound& chart_bound)
         CS_STDOUT << std::endl;
     }
 #endif
-    CS_RETURN_IF(echelons.empty() || echelons.size() > opts.echelons, false);
+    CS_RETURN_IF(echelons.empty() || static_cast<ssize_t>(echelons.size()) > opts.echelons, false);
     res.left = chart_bound.x;
     res.top = first_echelon_y + chart_bound.y;
 

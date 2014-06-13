@@ -103,7 +103,7 @@ protected:
 
         isize_t prev_left = pils.poses[0].x, prev_right = prev_left + pils.imgs[0].cols;
         isize_t cur_left, cur_right;
-        for (int32_t i = 1; i < pils.imgs.size(); ++i)
+        for (uint32_t i = 1; i < pils.imgs.size(); ++i)
         {
             cur_left = pils.poses[i].x;
             cur_right = cur_left + pils.imgs[i].cols;

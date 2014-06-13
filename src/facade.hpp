@@ -34,11 +34,13 @@ public:
 };
 
 typedef enum {
-    locate_chart = 0
+	locate_unknown = 0,
+    locate_chart,
 } CmdLocate;
 
 typedef enum {
-    detect_integer = 0,
+	detect_unknown = 0,
+    detect_integer,
     detect_percent,
     detect_textwidth,
 } CmdDetect;

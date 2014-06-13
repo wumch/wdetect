@@ -81,8 +81,10 @@ bool Preprocer::check_file_size(const PrepareOpts& opts, PrepareRes& res) const
 }
 
 // See: http://www.cplusplus.com/forum/beginner/45217/ . thank that guy.
+// TODO: disabled sine some bug in it.
 bool Preprocer::check_img_size(const PrepareOpts& opts, PrepareRes& res) const
 {
+	return true;
     FILE *fp = VCWD_FOPEN(opts.img_file.c_str(), "rb");
     if (fp == NULL)
     {
@@ -97,7 +99,7 @@ bool Preprocer::check_img_size(const PrepareOpts& opts, PrepareRes& res) const
     // In all formats, the file is at least 24 bytes big, so we'll read that always
     const int header_size = 24;
     uint8_t buf[header_size];
-    if (fread(buf, sizeof(buf[0]), header_size, fp) != header_size)
+    if (static_cast<ssize_t>(fread(buf, sizeof(buf[0]), header_size, fp)) != header_size)
     {
         fclose(fp);
         res.code = fo_img_content;
@@ -155,6 +157,8 @@ bool Preprocer::check_img_size(const PrepareOpts& opts, PrepareRes& res) const
         height = (buf[20] << 24) + (buf[21] << 16) + (buf[22] << 8) + (buf[23] << 0);
     }
 
+    CS_DUMP(width);
+    CS_DUMP(height);
     if (check_size(opts, width, height))
     {
         return true;

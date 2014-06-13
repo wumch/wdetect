@@ -112,7 +112,7 @@ protected:
         const isize_t widest_left = pils.poses[widest_idx].x;
         const isize_t widest_right = widest_left + pils.imgs[widest_idx].cols;
         const isize_t y_min = pils.y_mode - 2, y_max = pils.y_mode + 2;
-        const bool widest_valid = (widest_idx >= pils.imgs.size() - 2)
+        const bool widest_valid = (widest_idx >= static_cast<ssize_t>(pils.imgs.size()) - 2)
                 || (pils.imgs[widest_idx].cols > opts.digit_max_width);
 
         for (int32_t i = pils.poses.size() - 1; i >= first_idx; --i)
