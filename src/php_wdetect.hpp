@@ -79,6 +79,8 @@ PHP_METHOD(WDetecter, __destruct);
 PHP_METHOD(WDetecter, prepare);
 PHP_METHOD(WDetecter, scale);
 PHP_METHOD(WDetecter, locate);
+PHP_METHOD(WDetecter, row_scan);
+PHP_METHOD(WDetecter, col_scan);
 PHP_METHOD(WDetecter, setOrigin);
 PHP_METHOD(WDetecter, detect);
 

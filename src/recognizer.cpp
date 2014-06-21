@@ -74,7 +74,7 @@ void Recognizer::detect_hline(Sophist& sop) const
             {
                 if (sop.hline == Sophist::unknown_num)
                 {
-                    Sophist::Pos pos = sop.cal_hline_pos(row);
+                    Sophist::Pos pos = sop.cal_hline_pos(row + 1);
                     if (pos != Sophist::unknown)
                     {
                         sop.hline = 1;
@@ -128,11 +128,49 @@ bool Recognizer::is_hline(const Sophist& sop, int32_t row) const
 
 void Recognizer::detect_circle(Sophist& sop) const
 {
-    Point point((sop.cols >> 1) - 1, 0);
+	static const int32_t margin = 2;
+	static const int32_t width_threshold = (margin << 1) + 1;
+	CS_DUMP(sop.cols);
+	CS_DUMP(width_threshold);
+	if (width_threshold < sop.cols)
+	{
+		CircleResult best_res, res;
+		for (int32_t col = margin, end = sop.cols - margin; col < end; ++col)
+		{
+			res = detect_circle_incol(sop, col);
+			CS_DUMP((int)res.num);
+			CS_DUMP((int)res.first_pos);
+			CS_DUMP((int)res.total_diameter);
+			if (res.total_diameter > best_res.total_diameter)
+			{
+				best_res = res;
+				CS_DUMP((int)best_res.num);
+				CS_DUMP((int)best_res.first_pos);
+				CS_DUMP((int)best_res.total_diameter);
+			}
+		}
+		sop.circle = (best_res.num == Sophist::unknown_num ? 0 : best_res.num);
+		sop.circle_pos = best_res.first_pos;
+	}
+	else
+	{
+		CS_SAY("detect circle directly at " << ((sop.cols - 1) >> 1));
+		CircleResult res = detect_circle_incol(sop, (sop.cols - 1) >> 1);
+		sop.circle = res.num;
+		sop.circle_pos = res.first_pos;
+	}
+	CS_DUMP((int)sop.circle);
+	CS_DUMP((int)sop.circle_pos);
+}
+
+Recognizer::CircleResult Recognizer::detect_circle_incol(const Sophist& sop, int32_t col) const
+{
+    Point point(col, 0);
 
     bool prev_in_circle = false;
     int32_t continuous_begin = 0, continuous = 0;
 
+    CircleResult res;
     int32_t end = sop.rows;
     while (point.y < end)
     {
@@ -151,18 +189,20 @@ void Recognizer::detect_circle(Sophist& sop) const
             {
                 if (continuous >= sop.opts.circle_min_diameter_v)
                 {
-                    if (sop.circle == Sophist::unknown_num)
+                    if (res.num == Sophist::unknown_num)
                     {
-                        Sophist::Pos pos = sop.cal_circle_pos(continuous_begin, point.y - 1);
+                        Sophist::Pos pos = Sophist::calculate_circle_pos(sop, continuous_begin + 1, point.y);
                         if (pos != Sophist::unknown)
                         {
-                            sop.circle = 1;
-                            sop.circle_pos = pos;
+                        	res.total_diameter += point.y - continuous_begin;
+                            res.num = 1;
+                            res.first_pos = pos;
                         }
                     }
                     else
                     {
-                        ++sop.circle;
+                    	res.total_diameter += point.y - continuous_begin;
+                        ++res.num;
                     }
                 }
             }
@@ -171,10 +211,12 @@ void Recognizer::detect_circle(Sophist& sop) const
         }
         ++point.y;
     }
-    if (sop.circle == Sophist::unknown_num)
+    if (res.num == Sophist::unknown_num)
     {
-        sop.circle = 0;
+        res.num = 0;
     }
+
+    return res;
 }
 
 bool Recognizer::in_circle(const Sophist& sop, const Point& center) const
@@ -261,15 +303,166 @@ bool Recognizer::contain_island(const Sophist& sop) const
     return false;
 }
 
-digit_t Recognizer::recognize(Sophist& sop) const
+digit_t Recognizer::recognize(Sophist& sop, Sophist::Erode erode) const
 {
-    if (is_dot(sop))
-    {
-        return Config::digit_dot;
-    }
-    else if (is_comma(sop))
+	if (is_dot(sop))
+	{
+		return Config::digit_dot;
+	}
+	else if (is_comma(sop))
     {
         return Config::digit_comma;
+    }
+    else if (CS_BLIKELY(!contain_island(sop)))
+    {
+    	return recognize_digit(sop, erode);
+    }
+    return Config::invalid_digit;
+}
+
+digit_t Recognizer::recognize_digit(Sophist& sop, Sophist::Erode erode) const
+{
+	digit_t digit = recognize_digit(sop);
+	if (digit == Config::invalid_digit)
+	{
+		if (crop(sop, erode))
+		{
+			digit = recognize_digit(sop);
+		}
+	}
+	return digit;
+}
+
+bool Recognizer::crop(Sophist& sop, Sophist::Erode erode) const
+{
+	if (sop.img.cols > 1)
+	{
+		if (erode == Sophist::left)
+		{
+			CS_DUMP(sop.img.cols);
+			sop.img = sop.img(cv::Rect(1, 0, sop.img.cols - 1, sop.img.rows));
+			CS_DUMP(sop.img.cols);
+			return true;
+		}
+		else if (erode == Sophist::right)
+		{
+			CS_DUMP(sop.img.cols);
+			sop.img = sop.img(cv::Rect(0, 0, sop.img.cols - 1, sop.img.rows));
+			CS_DUMP(sop.img.cols);
+			return true;
+		}
+	}
+	return false;
+}
+
+digit_t Recognizer::recognize_digit(Sophist& sop) const
+{
+	detect_vline(sop);
+	detect_hline(sop);
+	detect_circle(sop);
+
+	CS_DUMP((int)sop.circle);
+	CS_DUMP((int)sop.circle_pos);
+	CS_DUMP((int)sop.hline);
+	CS_DUMP((int)sop.hline_pos);
+	CS_DUMP((int)sop.vline);
+
+	if (sop.circle == 2)
+	{
+		return 8;
+	}
+
+	if (sop.circle == 1)
+	{
+        switch (sop.circle_pos)
+        {
+        case Sophist::top:
+        	if (sop.hline == 1 && sop.vline == 1)
+        	{
+        		return 4;
+        	}
+        	else
+        	{
+        		return 9;
+        	}
+            break;
+        case Sophist::middle:
+            return 0;
+            break;
+        case Sophist::bottom:
+            return 6;
+            break;
+        case Sophist::unknown:
+            break;
+        }
+	}
+
+	if (sop.circle == 0)
+	{
+		if (sop.hline == 1)
+		{
+			if (sop.hline_pos == Sophist::top)
+			{
+				return recognize_5_and_7(sop);
+			}
+			else if (sop.hline_pos == Sophist::middle)
+			{
+				return 4;
+			}
+			else if (sop.hline_pos == Sophist::bottom)
+			{
+				if (sop.vline == 1)
+				{
+					return 1;
+				}
+				else if (sop.vline == 0)
+				{
+					return 2;
+				}
+			}
+		}
+		else if (sop.hline == 0)
+		{
+			if (sop.vline == 0)
+			{
+				return 3;
+			}
+		}
+		else if (sop.hline == 2)
+		{
+			if (sop.hline_pos == Sophist::top)
+			{
+				switch (recognize_5_and_7(sop))
+				{
+				case 5:
+					return 5;
+					break;
+				case 7:
+					return 2;
+					break;
+				}
+			}
+		}
+	}
+
+	// for scaled images, sometimes "3" contains a vertical line.
+	if (sop.vline == 1)
+	{
+		return 3;
+	}
+
+	return Config::invalid_digit;
+}
+
+digit_t Recognizer::recognize_useless(Sophist& sop) const
+{
+    if (is_comma(sop))
+    {
+        return Config::digit_comma;
+    }
+    else if (is_dot(sop))
+    {
+        return Config::digit_dot;
     }
     else if (CS_BLIKELY(!contain_island(sop)))
     {
@@ -281,6 +474,7 @@ digit_t Recognizer::recognize(Sophist& sop) const
             detect_vline(sop);
             CS_DUMP((int)sop.vline);
             detect_circle(sop);
+            CS_DUMP((int)sop.circle);
             if (sop.vline == 0)
             {
                 CS_DUMP((int)sop.circle);
@@ -311,7 +505,23 @@ digit_t Recognizer::recognize(Sophist& sop) const
                     return 8;
                 }
             }
-            if (sop.circle == 2)
+            if (sop.circle == 1) {
+                switch (sop.circle_pos)
+                {
+                case Sophist::top:
+                    return 9;
+                    break;
+                case Sophist::middle:
+                    return 0;
+                    break;
+                case Sophist::bottom:
+                    return 6;
+                    break;
+                case Sophist::unknown:
+                    break;
+                }
+            }
+            else if (sop.circle == 2)
             {
                 return 8;
             }
@@ -380,9 +590,14 @@ digit_t Recognizer::recognize(Sophist& sop) const
                 {
                     return 5;
                 }
+                else
+                {
+                	return 3;
+                }
             }
         }
     }
+    CS_SAY("recognize failed:");
     WDT_SHOW_IMG(sop.img);
     return Config::invalid_digit;
 }
@@ -390,6 +605,7 @@ digit_t Recognizer::recognize(Sophist& sop) const
 bool Recognizer::is_comma(const Sophist& sop) const
 {
     if (sop.rows && sop.rows <= sop.opts.comma_max_height &&
+    		sop.rows >= sop.opts.comma_min_height &&
         sop.cols && sop.cols <= sop.opts.comma_max_width)
     {
         int32_t area = 0;

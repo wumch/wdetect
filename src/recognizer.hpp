@@ -17,8 +17,11 @@ public:
     enum Pos {
         top, middle, bottom, unknown
     };
+    enum Erode {
+    	left, right, no
+    };
 
-    const cv::Mat& img;
+    cv::Mat img;
     const NumOpts& opts;
     const int32_t cols, rows;
 
@@ -51,7 +54,23 @@ public:
 
     CS_FORCE_INLINE Pos cal_circle_pos(int32_t row_begin, int32_t row_end) const
     {
-        int32_t top_quantile = round(rows * 0.3), bottom_quantile = round(rows * 0.65);
+    	return calculate_circle_pos(*this, row_begin, row_end);
+    }
+
+    static Pos calculate_circle_pos(const Sophist& sop, int32_t row_begin, int32_t row_end)
+    {
+    	CS_DUMP(row_begin);
+    	CS_DUMP(row_end);
+    	CS_DUMP(sop.rows);
+    	CS_DUMP(sop.cols);
+    	if ((row_end - row_begin + 1) > ((sop.rows + 1) >> 1))
+    	{
+    		return middle;
+    	}
+        int32_t top_quantile = round(sop.rows * 0.35),
+			bottom_quantile = round(sop.rows * 0.65);
+        CS_DUMP(top_quantile);
+        CS_DUMP(bottom_quantile);
         if (row_begin <= top_quantile)
         {
             if (row_end >= bottom_quantile)
@@ -102,20 +121,39 @@ private:
 public:
     Recognizer();
 
-    digit_t recognize(const cv::Mat& img, const NumOpts& opts) const
+    digit_t recognize(const cv::Mat& img, const NumOpts& opts, Sophist::Erode erode = Sophist::no) const
     {
         Sophist sop(img, opts);
-        return recognize(sop);
+        return recognize(sop, erode);
     }
 
     virtual ~Recognizer();
 
 protected:
-    digit_t recognize(Sophist& sop) const;
+    digit_t recognize(Sophist& sop, Sophist::Erode erode) const;
+    digit_t recognize_digit(Sophist& sop, Sophist::Erode erode) const;
+    digit_t recognize_digit(Sophist& sop) const;
+
+    bool crop(Sophist& sop, Sophist::Erode erode) const;
+
+    digit_t recognize_useless(Sophist& sop) const;
 
     void detect_hline(Sophist& sop) const;
     void detect_vline(Sophist& sop) const;
     void detect_circle(Sophist& sop) const;
+
+    class CircleResult
+    {
+    public:
+    	int32_t num;
+    	Sophist::Pos first_pos;
+    	int32_t total_diameter;
+
+    	CircleResult()
+    		: num(Sophist::unknown_num), first_pos(Sophist::unknown), total_diameter(0)
+    	{}
+    };
+    CircleResult detect_circle_incol(const Sophist& sop, int32_t col) const;
 
     bool contain_island(const Sophist& sop) const;
 

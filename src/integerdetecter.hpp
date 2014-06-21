@@ -35,21 +35,43 @@ public:
         CS_DUMP(pils.imgs.size());
         digits.reserve(pils.imgs.size());
         bool broken = false;
-        for (ImageList::const_iterator it = pils.imgs.begin(); it != pils.imgs.end(); ++it)
+        // ImageList::const_iterator it = pils.imgs.begin(); it != pils.imgs.end(); ++it
+        for (uint32_t i = 0; i < pils.imgs.size(); ++i)
         {
-            digit_t digit = recognizer.recognize(*it, opts);
-            WDT_IM_SHOW(*it);
+        	Sophist::Erode erode = Sophist::no;
+        	if (i < pils.break_flags.size())
+        	{
+        		if (pils.break_flags[i])
+        		{
+        			erode = Sophist::left;
+        		}
+        		else if ((i+1) < pils.break_flags.size())
+        		{
+        			if (pils.break_flags[i+1])
+        			{
+        				erode = Sophist::right;
+        			}
+        		}
+        	}
+            digit_t digit = recognizer.recognize(pils.imgs[i], opts, erode);
             CS_DUMP(digit);
-            if (CS_BUNLIKELY(digit == digit_dot || digit == invalid_digit))
+            if (CS_BUNLIKELY(digit == Config::invalid_digit))
             {
-                WDT_SHOW_IMG(*it);
+                WDT_SHOW_IMG(pils.imgs[i]);
                 res.code = fo_recognize;
                 broken = true;
                 break;
             }
             else
             {
-                digits.push_back(digit);
+            	if (digit == Config::digit_dot)
+            	{
+            		digits.push_back(Config::digit_comma);
+            	}
+            	else
+            	{
+            		digits.push_back(digit);
+            	}
             }
         }
         CS_DUMP(digits.size());

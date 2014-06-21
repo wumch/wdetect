@@ -39,17 +39,32 @@ public:
 
         res.percent.reserve(pils.imgs.size());
         bool broken = false;
-        for (ImageList::const_iterator it = pils.imgs.begin(); it != pils.imgs.end(); ++it)
+        for (uint32_t i = 0; i < pils.imgs.size(); ++i)
         {
-            digit_t digit = recognizer.recognize(*it, opts);
+        	Sophist::Erode erode = Sophist::no;
+        	if (i < pils.break_flags.size())
+        	{
+        		if (pils.break_flags[i])
+        		{
+        			erode = Sophist::left;
+        		}
+        		else if ((i+1) < pils.break_flags.size())
+        		{
+        			if (pils.break_flags[i+1])
+        			{
+        				erode = Sophist::right;
+        			}
+        		}
+        	}
+            digit_t digit = recognizer.recognize(pils.imgs[i], opts, erode);
             CS_DUMP(digit);
-            if (CS_BUNLIKELY(digit == digit_comma || digit == invalid_digit))
+            if (CS_BUNLIKELY(digit == Config::invalid_digit))
             {
                 res.code = fo_recognize;
                 broken = true;
                 break;
             }
-            else if (digit == digit_dot)
+            else if (digit == Config::digit_comma || digit == Config::digit_dot)
             {
                 res.percent += '.';
             }

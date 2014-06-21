@@ -16,13 +16,16 @@ namespace wdt {
 
 class PositedImageList
 {
+	typedef std::vector<bool> BreakFlags;	// it's safe.
 public:
     ImageList imgs;
     PointList poses;
+    BreakFlags break_flags;
     isize_t y_mode;
 
     PositedImageList(const ImageList& imgs_, const BoundList& bounds)
-        : imgs(imgs_), poses(extract_tl(bounds)), y_mode(calc_y_mode())
+        : imgs(imgs_), poses(extract_tl(bounds)),
+          break_flags(imgs.size(), false), y_mode(calc_y_mode())
     {}
 
     PositedImageList()
@@ -209,7 +212,6 @@ protected:
     {
         for (int32_t i = 0, end = pils.imgs.size() - (kind == percent); i < end; )
         {
-            CS_DUMP(end);
             if (pils.imgs[i].cols > opts.digit_max_width)
             {
                 if (!delimit(i))
@@ -235,7 +237,7 @@ protected:
             WDT_IM_SHOW(pils.imgs[img_idx]);
             CS_DUMP(delimiter);
 
-            const isize_t right_begin = delimiter + 1;
+            const isize_t right_begin = delimiter;
             if (0 < delimiter && right_begin < pils.imgs[img_idx].cols)
             {
                 {
@@ -245,11 +247,20 @@ protected:
                 }
                 {
                     cv::Mat tmp;
-                    pils.imgs[img_idx](Bound(0, 0, delimiter, pils.imgs[img_idx].rows)).copyTo(tmp);
+                    pils.imgs[img_idx](Bound(0, 0, delimiter + 1, pils.imgs[img_idx].rows)).copyTo(tmp);
                     pils.imgs[img_idx] = tmp;
                 }
-
-                pils.poses.insert(pils.poses.begin() + img_idx + 1, Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y));
+                const size_t offset = img_idx + 1;
+                if (pils.break_flags.empty())
+                {
+                	pils.break_flags.resize(pils.imgs.size(), false);
+                	pils.break_flags[offset] = true;
+                }
+                else
+                {
+                	pils.break_flags.insert(pils.break_flags.begin() + offset, true);
+                }
+                pils.poses.insert(pils.poses.begin() + offset, Point(pils.poses[img_idx].x + right_begin, pils.poses[img_idx].y));
                 WDT_IM_SHOW(pils.imgs[img_idx + 1]);
                 WDT_IM_SHOW(pils.imgs[img_idx]);
                 return true;

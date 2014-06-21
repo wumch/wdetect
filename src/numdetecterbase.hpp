@@ -24,10 +24,6 @@ protected:
     typedef typename Traits::ResType ResType;
 
 protected:
-    static const digit_t invalid_digit = -1;
-    static const digit_t digit_comma = -2;
-    static const digit_t digit_dot = -3;
-
     static const isize_t separate_max_sway = 2;
 
     static const Recognizer recognizer;
@@ -74,7 +70,7 @@ protected:
         result.reserve(digits.size());
         for (DigitList::const_iterator it = digits.begin(); it != digits.end(); ++it)
         {
-            result.append(1, *it == digit_comma ? ',' : ('0' + *it));
+            result.append(1, *it == Config::digit_comma ? ',' : ('0' + *it));
         }
         return result;
     }
@@ -109,7 +105,10 @@ protected:
             cur_right = cur_left + pils.imgs[i].cols;
             if (interact(cur_left, cur_right, prev_left, prev_right))
             {
-                return false;
+            	if (i < pils.break_flags.size() && !pils.break_flags[i])
+            	{
+            		return false;
+            	}
             }
             prev_left = cur_left;
             prev_right = cur_right;

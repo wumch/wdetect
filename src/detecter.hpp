@@ -13,6 +13,7 @@ namespace wdt {
 class Detecter
 {
 protected:
+	std::string img_file;
     cv::Mat img;
     isize_t left, top;
     bool offsets;
@@ -25,6 +26,9 @@ public:
     void scale(double rate);
 
     void locate(const ChartOpts& opts, ChartRes& res) const;
+
+    void row_scan(const RowScanOpts& opts, ScanRes& res) const;
+    void col_scan(const ColScanOpts& opts, ScanRes& res) const;
 
     void set_origin(isize_t left, isize_t top);
 

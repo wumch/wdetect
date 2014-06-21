@@ -1,10 +1,9 @@
 
 #pragma once
 
-#ifndef HAVE_CONFIG_H
-#   define HAVE_CONFIG_H 1
+#ifdef HAVE_CONFIG_H
+#	include "../config.h"
 #endif
-#include "../config.h"
 
 #ifndef CS_DEBUG
 #   ifdef USE_WDETECT_DEBUG

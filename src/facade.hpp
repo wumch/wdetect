@@ -12,10 +12,8 @@ namespace wdt {
 class Config
 {
 public:
+	enum {invalid_digit = -1, digit_comma = -2, digit_dot = -3};
     static const size_t img_file_min_size = 24;
-    static const digit_t invalid_digit = -1;
-    static const digit_t digit_comma = -2;
-    static const digit_t digit_dot = -3;
     static const isize_t invalid_y_mode = -1;
 
     typedef enum {
@@ -115,6 +113,13 @@ public:
     std::string percent;
 };
 
+class ScanRes: public DetectRes
+{
+public:
+	isize_t pos;		// 推进到
+	bool match;			// 是否匹配到
+};
+
 // prepare/locate/detect options
 class Options
 {};
@@ -176,7 +181,7 @@ public:
     isize_t vline_max_break, hline_max_break;  // 线最大断点数
     isize_t vline_min_gap, hline_min_gap;      // 线之间最小间隔
 
-    isize_t comma_max_width, comma_max_height,
+    isize_t comma_max_width, comma_max_height, comma_min_height,
         comma_min_area, comma_protrude;
 
     isize_t dot_max_width, dot_max_height,
@@ -191,6 +196,27 @@ class PercentOpts: public NumOpts
 public:
     isize_t percent_width;
 };
+
+class ScanOpts: public Options
+{
+public:
+	isize_t low, high;		// boundary.(扫描时逐行/列步进用).
+	isize_t begin, end;		// scanning range (扫描时逐像素步进用).
+	isize_t min_continuous;	// 最小连续匹配 才算找到。
+	isize_t max_miss;		// 最大不匹配次数
+	bool match_fg;			// true: 找前景色； false:找背景色
+	bool inverse;			// 颜色反转
+
+	ScanOpts()
+		: match_fg(true), inverse(false)
+	{}
+};
+
+class RowScanOpts: public ScanOpts
+{};
+
+class ColScanOpts: public ScanOpts
+{};
 
 typedef enum {
     integer, percent

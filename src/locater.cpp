@@ -75,20 +75,16 @@ void Locater::calc_height(const Bound& box)
     int32_t fg_cols = 0;
     bool found = false;
     CS_DUMP(box.x);
+    CS_DUMP(box.y);
     CS_DUMP(box.width);
+    CS_DUMP(box.height);
     const isize_t top = std::max(box.y + opts.chart_min_margin_bottom, 0),
         bottom = std::min(box.y + opts.chart_max_margin_bottom + min_continuous_fg_rows + 2, img.rows);
+
     for (isize_t row = top; row < bottom; ++row)
     {
         CS_DUMP(row);
         if (is_margin_row(row, left, opts.chart_height_scan_width))
-        {
-            if (fg_cols)
-            {
-                fg_cols = 0;
-            }
-        }
-        else
         {
             CS_DUMP(fg_cols);
             if (++fg_cols >= min_continuous_fg_rows)
@@ -96,6 +92,13 @@ void Locater::calc_height(const Bound& box)
                 found = true;
                 res.chart_height = row - fg_cols - box.y;
                 break;
+            }
+        }
+        else
+        {
+            if (fg_cols)
+            {
+                fg_cols = 0;
             }
         }
     }

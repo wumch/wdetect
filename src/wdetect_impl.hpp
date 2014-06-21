@@ -33,8 +33,8 @@ if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_L
 {                                           \
     convert_to_long_ex(MED);                \
     DEST.NAME = Z_LVAL_PP(MED);             \
-    CS_DUMP(DEST.NAME);                     \
-}
+}											\
+CS_DUMP(DEST.NAME)
 
 #define _WDT_FETCH_OPT_LONG_OP(_USELESS, _TUPLE, NAME)  \
     _WDT_FETCH_OPT_LONG(BOOST_PP_TUPLE_ELEM(3, 0, _TUPLE), BOOST_PP_TUPLE_ELEM(3, 1, _TUPLE), BOOST_PP_TUPLE_ELEM(3, 2, _TUPLE), NAME)
@@ -79,6 +79,8 @@ public:
 
     static void scale(wdt::Detecter* detecter, const double rate, zval* return_value);
 
+    static void row_scan(wdt::Detecter* detecter, const zval* options, zval* return_value);
+    static void col_scan(wdt::Detecter* detecter, const zval* options, zval* return_value);
     static void locate(wdt::Detecter* detecter, const zval* options, zval* return_value);
 
     static void set_origin(wdt::Detecter* detecter, wdt::isize_t left, wdt::isize_t top);
@@ -91,6 +93,7 @@ protected:
 
     CS_FORCE_INLINE static void form_retval(zval* return_value, const wdt::PrepareRes& res);
     CS_FORCE_INLINE static void form_retval(zval* return_value, const wdt::ChartRes& rates);
+    CS_FORCE_INLINE static void form_retval(zval* return_value, const wdt::ScanRes& res);
     CS_FORCE_INLINE static void form_retval(zval* return_value, const wdt::IntegerRes& rates);
     CS_FORCE_INLINE static void form_retval(zval* return_value, const wdt::PercentRes& rates);
     CS_FORCE_INLINE static void form_retval(zval* return_value, bool res);
@@ -139,6 +142,38 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
 }
 
 template<>
+wdt::RowScanOpts Proxy::load_opts<wdt::RowScanOpts>(const zval* options)
+{
+    wdt::RowScanOpts opts;
+    zval** medium;
+    _WDT_FETCH_LONG_OPTS(options, opts, medium,
+		low, high,
+		begin, end,
+		min_continuous,
+		max_miss,
+		match_fg,
+		inverse
+    );
+    return opts;
+}
+
+template<>
+wdt::ColScanOpts Proxy::load_opts<wdt::ColScanOpts>(const zval* options)
+{
+    wdt::ColScanOpts opts;
+    zval** medium;
+    _WDT_FETCH_LONG_OPTS(options, opts, medium,
+		low, high,
+		begin, end,
+		min_continuous,
+		max_miss,
+		match_fg,
+		inverse
+    );
+    return opts;
+}
+
+template<>
 wdt::IntegerOpts Proxy::load_opts<wdt::IntegerOpts>(const zval* options)
 {
     wdt::IntegerOpts opts;
@@ -150,7 +185,7 @@ wdt::IntegerOpts Proxy::load_opts<wdt::IntegerOpts>(const zval* options)
         vline_adj, hline_adj,
         vline_max_break, hline_max_break,
         vline_min_gap, hline_min_gap,
-        comma_max_width, comma_max_height,
+        comma_max_width, comma_max_height, comma_min_height,
         comma_min_area, comma_protrude,
         dot_max_width, dot_max_height,
         dot_min_area,
@@ -178,6 +213,7 @@ wdt::PercentOpts Proxy::load_opts<wdt::PercentOpts>(const zval* options)
         percent_width,
         left, top, right, bottom
     );
+    _WDT_FETCH_LONG_OPTS(options, opts, medium, comma_min_height);
     return opts;
 }
 
@@ -252,6 +288,22 @@ void Proxy::locate(wdt::Detecter* detecter, const zval* options, zval* return_va
     }
 }
 
+void Proxy::row_scan(wdt::Detecter* detecter, const zval* options, zval* return_value)
+{
+	wdt::RowScanOpts opts = load_opts<wdt::RowScanOpts>(options);
+	wdt::ScanRes res;
+	detecter->row_scan(opts, res);
+	form_retval(return_value, res);
+}
+
+void Proxy::col_scan(wdt::Detecter* detecter, const zval* options, zval* return_value)
+{
+	const wdt::ColScanOpts opts = load_opts<wdt::ColScanOpts>(options);
+	wdt::ScanRes res;
+	detecter->col_scan(opts, res);
+	form_retval(return_value, res);
+}
+
 void Proxy::form_retval(zval* return_value, const wdt::PercentRes& res)
 {
     init_retval(return_value, res.code, res.percent);
@@ -265,6 +317,13 @@ void Proxy::form_retval(zval* return_value, const wdt::IntegerRes& res)
 void Proxy::form_retval(zval* return_value, const wdt::PrepareRes& res)
 {
     init_retval(return_value, res.code);
+}
+
+void Proxy::form_retval(zval* return_value, const wdt::ScanRes& res)
+{
+    init_retval(return_value, res.code);
+    add_next_index_bool(return_value, res.match);
+    add_next_index_long(return_value, res.pos);
 }
 
 void Proxy::form_retval(zval* return_value, const wdt::ChartRes& res)
@@ -302,7 +361,6 @@ void Proxy::init_retval(zval* return_value, wdt::ResultCode code, const std::str
 {
     init_retval(return_value, code);
     add_next_index_stringl(return_value, rate.c_str(), rate.size(), true);
-//    add_next_index_double(return_value, rate);
 }
 
 void Proxy::init_retval(zval* return_value, wdt::ResultCode code, wdt::num_t num)

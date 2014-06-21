@@ -54,6 +54,8 @@ function_entry wdetecter_methods[] = {
     PHP_ME(WDetecter, prepare,     NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, scale,       NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, setOrigin,   NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, row_scan,    NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(WDetecter, col_scan,    NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, locate,      NULL, ZEND_ACC_PUBLIC)
     PHP_ME(WDetecter, detect,      NULL, ZEND_ACC_PUBLIC)
     {NULL, NULL, NULL}
@@ -159,6 +161,42 @@ PHP_METHOD(WDetecter, scale)
     }
 
     Proxy::scale(detecter, rate, return_value);
+}
+
+PHP_METHOD(WDetecter, row_scan)
+{
+    zval* options;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE)
+    {
+        RETURN_FALSE;
+    }
+
+    wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(
+        zend_object_store_get_object(getThis() TSRMLS_CC))->dectecter;
+    if (detecter == NULL)
+    {
+        RETURN_FALSE;
+    }
+
+    Proxy::row_scan(detecter, options, return_value);
+}
+
+PHP_METHOD(WDetecter, col_scan)
+{
+    zval* options;
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a", &options) == FAILURE)
+    {
+        RETURN_FALSE;
+    }
+
+    wdt::Detecter* detecter = reinterpret_cast<DetecterObject*>(
+        zend_object_store_get_object(getThis() TSRMLS_CC))->dectecter;
+    if (detecter == NULL)
+    {
+        RETURN_FALSE;
+    }
+
+    Proxy::col_scan(detecter, options, return_value);
 }
 
 PHP_METHOD(WDetecter, locate)
