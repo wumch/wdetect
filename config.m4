@@ -9,16 +9,19 @@ PHP_ARG_WITH(staging, [wumengchun's staging of ccpp support],
 
 AC_ARG_ENABLE([debug], [enable debug mode for wdetect],
   [AC_DEFINE(CS_DEBUG, 2, [debug level of wdetect: 0/1/2])
+    CXX=clang++
     EXTRA_LDFLAGS="$EXTRA_LDFLAGS -g3"
-    CXXFLAGS="$CXXFLAGS -g2 -O0 -DDEBUG -Wall"], [
-  AC_DEFINE(NDEBUG, , standard NDEBUG, will also disable debug for wdetect)]
+    CXXFLAGS="$CXXFLAGS -g3 -O0 -DDEBUG -Wall"], 
+  [AC_DEFINE(NDEBUG, , standard NDEBUG, will also disable debug for wdetect)
+    CXX=g++
+    EXTRA_LDFLAGS="$EXTRA_LDFLAGS -Wl,-O1"
+    CXXFLAGS="$CXXFLAGS -O2 -finline -finline-small-functions -Wall -Wno-write-strings"]
 )
 
 if test "$PHP_WDETECT" != "no"; then
   dnl Write more examples of tests here...
   PHP_REQUIRE_CXX()
   AC_LANG_PUSH([C++])
-  CXX=g++
   
   # --with-wdetect -> check with-path
   SEARCH_PATH=". /usr /usr/local"     # you might want to change this
@@ -100,7 +103,7 @@ if test "$PHP_WDETECT" != "no"; then
   
   EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L$WDETECT_DIR/lib -lm `Magick++-config --ldflags --libs`"
   INCLUDES="$INCLUDES `Magick++-config --cppflags --cxxflags`"
-  CXXFLAGS="$CFLAGS $CXXFLAGS -Wno-deprecated-writable-strings"
+  CXXFLAGS="$CFLAGS $CXXFLAGS"
   # CPPFILES="$WDETECT_SOURCE_DIR/wdetect.cpp 
   #   $WDETECT_SOURCE_DIR/facade.cpp 
   #   $WDETECT_SOURCE_DIR/utility.cpp 
