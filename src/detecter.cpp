@@ -35,7 +35,6 @@ void Detecter::scale(double rate)
         // 加载
         cv::Mat colored_img;
         colored_img = cv::imread(img_file, CV_LOAD_IMAGE_UNCHANGED);
-        WDT_SHOW_IMG(colored_img);
         CS_DUMP(colored_img.cols);
         CS_DUMP(colored_img.rows);
 
@@ -49,7 +48,6 @@ void Detecter::scale(double rate)
 //			CV_INTER_CUBIC
 			CV_INTER_LANCZOS4
 			);
-        WDT_SHOW_IMG(scaled_img);
         colored_img.release();
         CS_DUMP(scaled_img.cols);
         CS_DUMP(scaled_img.rows);
@@ -57,7 +55,6 @@ void Detecter::scale(double rate)
         // 转灰度图
         cv::Mat gray_img(scaled_img.size(), CV_8UC1);
         cv::cvtColor(scaled_img, gray_img, cv::COLOR_BGR2GRAY);
-        WDT_SHOW_IMG(gray_img);
 
         // 二值化
         if (!gray_img.empty())

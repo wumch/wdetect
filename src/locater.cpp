@@ -70,38 +70,53 @@ void Locater::locate()
 
 void Locater::calc_height(const Bound& box)
 {
-    static const int32_t min_continuous_fg_rows = 4;
+    static const int32_t min_continuous_fg_rows = 6;
     const isize_t left = box.x;
-    int32_t fg_cols = 0;
-    bool found = false;
+    int32_t fg_rows = 0, space_rows = 0;
+    bool found = false, space_found = false;
     CS_DUMP(box.x);
     CS_DUMP(box.y);
     CS_DUMP(box.width);
     CS_DUMP(box.height);
-    const isize_t top = std::max(box.y + opts.chart_min_margin_bottom, 0),
+    const isize_t top = std::max(box.y + static_cast<isize_t>(round(res.chart_width * opts.chart_min_margin_bottom)), 0),
         bottom = std::min(box.y + opts.chart_max_margin_bottom + min_continuous_fg_rows + 2, img.rows);
+    CS_DUMP(top);
+    CS_DUMP(bottom);
 
     for (isize_t row = top; row < bottom; ++row)
     {
         CS_DUMP(row);
         if (is_margin_row(row, left, opts.chart_height_scan_width))
         {
-            CS_DUMP(fg_cols);
-            if (++fg_cols >= min_continuous_fg_rows)
+            if (fg_rows)
             {
-                found = true;
-                res.chart_height = row - fg_cols - box.y;
-                break;
+                fg_rows = 0;
+            }
+            if (++space_rows >= opts.chart_min_space_bottom)
+            {
+            	space_found = true;
             }
         }
         else
         {
-            if (fg_cols)
+            CS_DUMP(fg_rows);
+            if (space_found)
             {
-                fg_cols = 0;
+				if (++fg_rows >= min_continuous_fg_rows)
+				{
+					CS_SAY("found at " << (row - fg_rows));
+					found = true;
+					res.chart_height = row - fg_rows - box.y;
+					break;
+				}
             }
+            else if (space_rows)
+			{
+				space_rows = 0;
+			}
         }
     }
+    CS_DUMP(found);
     if (!found)
     {
         res.code = fo_calc_chart_height;
@@ -336,32 +351,32 @@ bool Locater::detect(const Bound& chart_bound)
         CS_DUMP(line[1]);
         CS_DUMP(line[2]);
         CS_DUMP(line[3]);
-        CS_DUMP(cal_x(line, -1));
-        CS_DUMP(cal_x(line, 0));
+        CS_DUMP(calc_x(line, -1));
+        CS_DUMP(calc_x(line, 0));
         CS_DUMP(eche_it->size());
-        CS_DUMP(cal_x(line, eche_it->size() - 1));
-        CS_DUMP(cal_x(line, eche_it->size()));
-        CS_DUMP(cal_x(line, eche_it->size() + 1));
+        CS_DUMP(calc_x(line, eche_it->size() - 1));
+        CS_DUMP(calc_x(line, eche_it->size()));
+        CS_DUMP(calc_x(line, eche_it->size() + 1));
 
-        res.rates.insert(std::make_pair(turn, cal_rate(line, eche_it->size())));
+        res.rates.insert(std::make_pair(turn, calc_rate(line, eche_it->size())));
         CS_DUMP(res.rates.rbegin()->second);
         ++turn;
     }
     return true;
 }
 
-CS_FORCE_INLINE double Locater::cal_rate(const cv::Vec4f& line, double height) const
+CS_FORCE_INLINE double Locater::calc_rate(const cv::Vec4f& line, double height) const
 {
-    return (cal_x(line, 0) - opts.echelon_padding_left)
-        / (cal_x(line, height) - opts.echelon_padding_left);
+    return (calc_x(line, 0) - opts.echelon_padding_left)
+        / (calc_x(line, height) - opts.echelon_padding_left);
 }
 
-double Locater::cal_x(double gradient_inv, double x0, double y0, double y) const
+double Locater::calc_x(double gradient_inv, double x0, double y0, double y) const
 {
     return (y - y0) * gradient_inv + x0;
 }
 
-double Locater::cal_x(const cv::Vec4f& line, double y) const
+double Locater::calc_x(const cv::Vec4f& line, double y) const
 {
     return (line[0] * (y - line[3]) / line[1]) + line[2];
 }

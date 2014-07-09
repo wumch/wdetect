@@ -152,12 +152,14 @@ class LocateOpts: public DetectOpts
 class ChartOpts: public LocateOpts
 {
 public:
+    double chart_min_margin_bottom;
+
     isize_t chart_min_width, chart_max_width,
         chart_min_height, chart_max_height;
     int32_t echelons;    // 梯形最大数量
     isize_t echelon_padding_left;    // 梯形左补白
     isize_t chart_min_margin_right, chart_max_margin_right;
-    isize_t chart_min_margin_bottom, chart_max_margin_bottom;
+    isize_t chart_min_space_bottom, chart_max_margin_bottom;
     isize_t chart_height_scan_width;
     int32_t chart_margin_max_fg;
     int32_t echelon_max_wrong_row;    // 违反斜率最多行数

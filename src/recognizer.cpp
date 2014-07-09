@@ -74,7 +74,7 @@ void Recognizer::detect_hline(Sophist& sop) const
             {
                 if (sop.hline == Sophist::unknown_num)
                 {
-                    Sophist::Pos pos = sop.cal_hline_pos(row + 1);
+                    Sophist::Pos pos = sop.calc_hline_pos(row + 1);
                     if (pos != Sophist::unknown)
                     {
                         sop.hline = 1;
@@ -130,23 +130,15 @@ void Recognizer::detect_circle(Sophist& sop) const
 {
 	static const int32_t margin = 2;
 	static const int32_t width_threshold = (margin << 1) + 1;
-	CS_DUMP(sop.cols);
-	CS_DUMP(width_threshold);
 	if (width_threshold < sop.cols)
 	{
 		CircleResult best_res, res;
 		for (int32_t col = margin, end = sop.cols - margin; col < end; ++col)
 		{
 			res = detect_circle_incol(sop, col);
-			CS_DUMP((int)res.num);
-			CS_DUMP((int)res.first_pos);
-			CS_DUMP((int)res.total_diameter);
 			if (res.total_diameter > best_res.total_diameter)
 			{
 				best_res = res;
-				CS_DUMP((int)best_res.num);
-				CS_DUMP((int)best_res.first_pos);
-				CS_DUMP((int)best_res.total_diameter);
 			}
 		}
 		sop.circle = (best_res.num == Sophist::unknown_num ? 0 : best_res.num);
@@ -154,7 +146,6 @@ void Recognizer::detect_circle(Sophist& sop) const
 	}
 	else
 	{
-		CS_SAY("detect circle directly at " << ((sop.cols - 1) >> 1));
 		CircleResult res = detect_circle_incol(sop, (sop.cols - 1) >> 1);
 		sop.circle = res.num;
 		sop.circle_pos = res.first_pos;
@@ -464,7 +455,7 @@ digit_t Recognizer::recognize_useless(Sophist& sop) const
     {
         return Config::digit_dot;
     }
-    else if (CS_BLIKELY(!contain_island(sop)))
+    else if (!CS_BUNLIKELY(contain_island(sop)))
     {
         detect_hline(sop);
         CS_DUMP((int)sop.hline);
@@ -664,17 +655,16 @@ digit_t Recognizer::recognize_5_and_7(const Sophist& sop) const
         if (fgs <= fg_threshold)
         {
             blank_began = true;
-            if (fg_col == -1)
+            if (fg_col != -1)
             {
-                return Config::invalid_digit;
-            }
-            else if (fg_col < lr_delimiter)
-            {
-                ++maybe_5;
-            }
-            else
-            {
-                ++maybe_7;
+				if (fg_col < lr_delimiter)
+				{
+					++maybe_5;
+				}
+				else
+				{
+					++maybe_7;
+				}
             }
         }
         else

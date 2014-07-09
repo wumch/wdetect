@@ -52,7 +52,7 @@ public:
         return is_fg(point.x, point.y);
     }
 
-    CS_FORCE_INLINE Pos cal_circle_pos(int32_t row_begin, int32_t row_end) const
+    CS_FORCE_INLINE Pos calc_circle_pos(int32_t row_begin, int32_t row_end) const
     {
     	return calculate_circle_pos(*this, row_begin, row_end);
     }
@@ -89,7 +89,7 @@ public:
         return unknown;
     }
 
-    CS_FORCE_INLINE Pos cal_hline_pos(int32_t row) const
+    CS_FORCE_INLINE Pos calc_hline_pos(int32_t row) const
     {
         if (row <= round(rows * 0.4))
         {

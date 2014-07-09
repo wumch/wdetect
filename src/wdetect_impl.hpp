@@ -28,11 +28,26 @@ if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_L
     DEST = Z_LVAL_PP(MED);                  \
 }
 
+#define _WDT_GET_OPT_DOUBLE(SRC, DEST, MED, NAME) \
+if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_LITER(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
+{                                           \
+    convert_to_double_ex(MED);                \
+    DEST = Z_DVAL_PP(MED);                  \
+}
+
 #define _WDT_FETCH_OPT_LONG(SRC, DEST, MED, NAME) \
 if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_LITER(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
 {                                           \
     convert_to_long_ex(MED);                \
     DEST.NAME = Z_LVAL_PP(MED);             \
+}											\
+CS_DUMP(DEST.NAME)
+
+#define _WDT_FETCH_OPT_DOUBLE(SRC, DEST, MED, NAME) \
+if (zend_hash_find(Z_ARRVAL_P(SRC), CS_STR_LITER(NAME), CS_CONST_STRLEN(CS_STR_LITER(NAME)) + 1, reinterpret_cast<void**>(&MED)) == SUCCESS)    \
+{                                           \
+    convert_to_double_ex(MED);                \
+    DEST.NAME = Z_DVAL_PP(MED);             \
 }											\
 CS_DUMP(DEST.NAME)
 
@@ -133,11 +148,12 @@ wdt::ChartOpts Proxy::load_opts<wdt::ChartOpts>(const zval* options)
         chart_min_height, chart_max_height,
         echelons, echelon_padding_left,
         chart_min_margin_right, chart_max_margin_right,
-        chart_min_margin_bottom, chart_max_margin_bottom, chart_height_scan_width,
+        chart_min_space_bottom, chart_max_margin_bottom, chart_height_scan_width,
         chart_margin_max_fg,
         echelon_max_wrong_row,
         echelon_gradient_min_continuous
     );
+    _WDT_FETCH_OPT_DOUBLE(options, opts, medium, chart_min_margin_bottom)
     return opts;
 }
 

@@ -54,6 +54,16 @@ public:
         poses.reserve(size);
     }
 
+    void remove(size_t index)
+    {
+        imgs.erase(imgs.begin() + index);
+        poses.erase(poses.begin() + index);
+        if (index < break_flags.size())
+        {
+        	break_flags.erase(break_flags.begin() + index);
+        }
+    }
+
 protected:
     PointList extract_tl(const BoundList& bounds) const
     {
@@ -139,6 +149,7 @@ public:
             mark();
             separate();
             delimit();
+            solve_x_interact();
 #if CS_DEBUG
             dump();
 #endif
@@ -206,6 +217,81 @@ protected:
                 }
             }
         }
+    }
+
+    void solve_x_interact()
+    {
+    	CS_DUMP(pils.imgs.size());
+        CS_RETURN_IF(pils.imgs.empty());
+
+        isize_t prev_left = pils.poses[0].x, prev_right = prev_left + pils.imgs[0].cols;
+        isize_t cur_left, cur_right;
+        for (uint32_t i = 1; i < pils.imgs.size(); ++i)
+        {
+            cur_left = pils.poses[i].x;
+            cur_right = cur_left + pils.imgs[i].cols;
+            if (interact(cur_left, cur_right, prev_left, prev_right))
+            {
+            	CS_SAY("interact:" << i);
+            	CS_DUMP((i < pils.break_flags.size() && pils.break_flags[i]));
+            	if (!(i < pils.break_flags.size() && pils.break_flags[i]))
+            	{
+                	CS_SAY("integrate:" << i);
+            		integrate(i - 1, i);
+                	CS_DUMP(pils.imgs.size());
+                	--i;
+            		prev_left = pils.poses[i].x;
+            		prev_right = prev_left + pils.imgs[i].cols;
+            	}
+            }
+            else
+            {
+				prev_left = cur_left;
+				prev_right = cur_right;
+            }
+        }
+
+    	CS_DUMP(pils.imgs.size());
+    }
+
+    void integrate(uint32_t dst_idx, uint32_t src_idx)
+    {
+    	isize_t x = std::min(pils.poses[dst_idx].x, pils.poses[src_idx].x);
+    	isize_t y = std::min(pils.poses[dst_idx].y, pils.poses[src_idx].y);
+    	isize_t width = std::max(pils.poses[dst_idx].x + pils.imgs[dst_idx].cols - x,
+    			pils.poses[src_idx].x + pils.imgs[src_idx].cols - x);
+    	isize_t height = std::max(pils.poses[dst_idx].y + pils.imgs[dst_idx].rows - y,
+    			pils.poses[src_idx].y + pils.imgs[src_idx].rows - y);
+
+    	cv::Mat dst_img(height, width, CV_8UC1);
+    	dst_img.setTo(Config::bg(opts.inverse));
+
+    	cv::Mat dst = dst_img(
+			cv::Rect(pils.poses[dst_idx].x - x, pils.poses[dst_idx].y - y,
+				pils.imgs[dst_idx].cols, pils.imgs[dst_idx].rows));
+    	pils.imgs[dst_idx].copyTo(dst);
+
+    	dst = dst_img(
+			cv::Rect(pils.poses[src_idx].x - x, pils.poses[src_idx].y - y,
+				pils.imgs[src_idx].cols, pils.imgs[src_idx].rows));
+    	pils.imgs[src_idx].copyTo(dst);
+
+    	pils.remove(src_idx);
+    	pils.imgs[dst_idx] = dst_img;
+    	pils.poses[dst_idx].x = x;
+    	pils.poses[dst_idx].y = y;
+    }
+
+    bool interact(int32_t other_idx, isize_t widest_left, isize_t widest_right) const
+    {
+        const isize_t other_left = pils.poses[other_idx].x;
+        const isize_t other_right = other_left + pils.imgs[other_idx].cols;
+        return interact(widest_left, widest_right, other_left, other_right);
+    }
+
+    bool interact(isize_t a_left, isize_t a_right, isize_t b_left, isize_t b_right) const
+    {
+        return !(a_right <= b_left || b_right <= a_left);
     }
 
     void delimit()

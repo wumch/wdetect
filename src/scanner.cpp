@@ -32,7 +32,6 @@ isize_t Scanner::row_scan(const RowScanOpts& opts) const
 		|| (backward && row > row_end))
 	{
 		is_margin = is_margin_row(opts, row, col_begin, col_end);
-		CS_SAY(row << " is " << (is_margin ? "margin" : "not margin"));
 		if ((opts.match_fg && is_margin)
 			|| (!opts.match_fg && !is_margin))
 		{
@@ -92,24 +91,16 @@ isize_t Scanner::col_scan(const ColScanOpts& opts) const
 		col_end = adjust_col(opts.high),
 		row_begin = adjust_row(opts.begin),
 		row_end = adjust_row(opts.end);
-	CS_DUMP(row_begin);
-	CS_DUMP(row_end);
-	CS_DUMP(col_begin);
-	CS_DUMP(col_end);
-	CS_DUMP(opts.match_fg);
 
 	isize_t col = col_begin;
 	const bool backward = (col_begin > col_end);
 	const int step = backward ? -1 : 1;
-	CS_DUMP(backward);
-	CS_DUMP(step);
 
 	bool is_margin;
 	while ((!backward && col < col_end)
 		|| (backward && col > col_end))
 	{
 		is_margin = is_margin_col(opts, col, row_begin, row_end);
-		CS_SAY(col << " is " << (is_margin ? "margin" : "not margin"));
 		if ((opts.match_fg && is_margin)
 			|| (!opts.match_fg && !is_margin))
 		{
@@ -128,9 +119,6 @@ isize_t Scanner::col_scan(const ColScanOpts& opts) const
 			}
 
 			isize_t nm_col = col + step;
-			CS_DUMP(nm_col);
-			CS_DUMP(nm_end);
-			CS_DUMP(backward);
 			while ((!backward && nm_col < nm_end)
 				|| (backward && nm_col > nm_end))
 			{
