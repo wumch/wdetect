@@ -9,7 +9,7 @@ wdetect 是一个php扩展，功能主要是：
 判断图片上指定的矩形框里包含的文本的宽度(像素数) 与 给定的文本 是否相近(用于粗略判断 图上文本内容跟指定文本内容是否相同，下面安装的版本里被阉了)
 wdetect 依赖opencv2、boost>=1.41(filesystem/preprocessor/lexical_cast等)、staging(c/c++脚手架，私人物品)，上述第四个功能依赖 ImageMagick。
 
-安装：
+CentO上安装：
 先安装依赖：
 
 安装opencv2，要下载89M的源码，这里有：192.168.100.141:/home/wumengchun/opencv-2.4.9.zip (http://jaist.dl.sourceforge.net/project/opencvlibrary/opencv-unix/2.4.9/opencv-2.4.9.zip)
@@ -52,7 +52,7 @@ for lib in ls /usr/lib64/libboost_*so.5; do test ! -e ${lib/so.5/so} && sudo ln 
 
  
 
-centos上安装opencv2几个痛点：
+centos上安装opencv2：
 
 先把cmake升级到2.8.1x，然后 cmake28（不能cmake）
 记得把CC/CXX设置为gcc4.4版：env CC=/usr/bin/gcc44 CXX=/usr/bin/g++44  cmake28 -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr -D BUILD_NEW_PYTHON_SUPPORT=NO .. 
