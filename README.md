@@ -16,7 +16,7 @@ CentO上安装：
 
 1. 安装opencv2，要下载89M的源码，这里有：192.168.100.141:/home/wumengchun/opencv-2.4.9.zip (http://jaist.dl.sourceforge.net/project/opencvlibrary/opencv-unix/2.4.9/opencv-2.4.9.zip)
 2. 安装boost：
-```{bash}
+```bash
 sudo yum install boost141-devel.x86_64 boost141-filesystem.x86_64 -y
 （wdetect、staging代码svn地址：http://dev.xundameng.com/weiboyi-api/Plugins/ImageRecognition/trunk）
 ```
