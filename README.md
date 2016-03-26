@@ -20,6 +20,7 @@ CentO上安装：
 sudo yum install boost141-devel.x86_64 boost141-filesystem.x86_64 -y
 （wdetect、staging代码svn地址：http://dev.xundameng.com/weiboyi-api/Plugins/ImageRecognition/trunk）
 ```
+
 3. 进wdetect源码的目录，修改config.m4，设置 CXX=g++44  后再
 ```bash
 /usr/local/php/bin/phpize
