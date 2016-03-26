@@ -15,10 +15,12 @@ CentO上安装：
 先安装依赖：
 
 1. 安装opencv2，要下载89M的源码，这里有：192.168.100.141:/home/wumengchun/opencv-2.4.9.zip (http://jaist.dl.sourceforge.net/project/opencvlibrary/opencv-unix/2.4.9/opencv-2.4.9.zip)
-安装boost：sudo yum install boost141-devel.x86_64 boost141-filesystem.x86_64 -y
+2. 安装boost：
+```{bash}
+sudo yum install boost141-devel.x86_64 boost141-filesystem.x86_64 -y
 （wdetect、staging代码svn地址：http://dev.xundameng.com/weiboyi-api/Plugins/ImageRecognition/trunk）
-
-2. 然后进wdetect源码的目录，修改config.m4，设置 CXX=g++44  后再
+```
+3. 进wdetect源码的目录，修改config.m4，设置 CXX=g++44  后再
 ```bash
 /usr/local/php/bin/phpize
 ./configure --enable-wdetect --with-staging=/opt/release/staging --with-php-config=/usr/local/php/bin/php-config
